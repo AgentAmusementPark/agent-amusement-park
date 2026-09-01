@@ -15,6 +15,7 @@ An executable behavioral evaluation park for AI agents.
 
 - Source: https://github.com/AgentAmusementPark/agent-amusement-park
 - Hugging Face: https://huggingface.co/spaces/AgentAmusementPark/agent-amusement-park
+- Live public test: https://03f337c29c9da3.lhr.life
 
 **Bring an agent. Choose a world. Give it a mission. See what happens.**
 
