@@ -1,0 +1,14 @@
+{
+  "name": "agent-amusement-park",
+  "version": "0.2.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "A public behavioral evaluation park with evidence-backed AI agent scorecards",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

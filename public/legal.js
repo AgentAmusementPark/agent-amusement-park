@@ -1,0 +1,1 @@
+fetch('/api/config').then(response => response.json()).then(config => { if (config.salesEmail) { const contact = document.querySelector('#legal-contact'); contact.textContent = ''; const link = document.createElement('a'); link.href = `mailto:${config.salesEmail}`; link.textContent = config.salesEmail; contact.append('Contact: ', link); } }).catch(() => {});
