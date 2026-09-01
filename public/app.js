@@ -1,5 +1,7 @@
 const state = { rides: [], selected: null, latestRun: null, config: null };
 const $ = selector => document.querySelector(selector);
+const acquisitionSource = (/^[a-z0-9_-]{1,40}$/i.test(new URLSearchParams(location.search).get('src') || ''))
+  ? new URLSearchParams(location.search).get('src').toLowerCase() : 'direct';
 
 async function loadRides() {
   const response = await fetch('/api/rides'); state.rides = await response.json();
@@ -34,7 +36,7 @@ $('#run').addEventListener('click', async () => {
   if (selectedAgent === 'browser') {
     button.disabled = true; button.innerHTML = 'Opening the agent entrance… <span>↻</span>'; $('#error').textContent = '';
     try {
-      const response = await fetch('/api/browser-runs', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ rideId:state.selected, agentName:$('#browser-agent-name').value || 'Codex browser agent' }) });
+      const response = await fetch('/api/browser-runs', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ rideId:state.selected, agentName:$('#browser-agent-name').value || 'Codex browser agent', source:acquisitionSource }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Could not create browser run');
       location.href = result.participantUrl;
     } catch (error) { $('#error').textContent = error.message; button.disabled = false; button.innerHTML = 'Run the agent <span>→</span>'; }
@@ -43,7 +45,7 @@ $('#run').addEventListener('click', async () => {
   const agent = selectedAgent === 'external' ? { type: 'external', url: $('#adapter-url').value } : { type: 'builtin', id: selectedAgent };
   button.disabled = true; button.innerHTML = 'Agent is on the ride… <span>↻</span>'; $('#error').textContent = '';
   try {
-    const response = await fetch('/api/runs', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ rideId:state.selected, agent }) });
+    const response = await fetch('/api/runs', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ rideId:state.selected, agent, source:acquisitionSource }) });
     const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Run failed'); renderResult(result);
   } catch (error) { $('#error').textContent = error.message; }
   finally { button.disabled = false; button.innerHTML = 'Run the agent <span>→</span>'; }
@@ -66,7 +68,7 @@ $('#share-result').addEventListener('click', async () => {
   if (!state.latestRun) return;
   const button = $('#share-result'); button.disabled = true; button.textContent = 'Creating scorecard…';
   try {
-    const response = await fetch('/api/shares', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({runId:state.latestRun.runId}) });
+    const response = await fetch('/api/shares', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({runId:state.latestRun.runId, source:acquisitionSource}) });
     const share = await response.json(); if (!response.ok) throw new Error(share.error || 'Could not create scorecard.');
     location.href = share.path;
   } catch (error) { $('#error').textContent = error.message; button.disabled = false; button.innerHTML = 'Create verified scorecard <span>↗</span>'; }
@@ -75,4 +77,6 @@ $('#share-result').addEventListener('click', async () => {
 function recordEvent(name, metadata = {}) { fetch('/api/events', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({name, metadata}) }).catch(() => {}); }
 
 function escapeHtml(text) { const node = document.createElement('span'); node.textContent = text; return node.innerHTML; }
+recordEvent('landing_viewed', { source: acquisitionSource });
 Promise.all([loadRides(), loadConfig()]).catch(error => { $('#error').textContent = error.message; });
+
