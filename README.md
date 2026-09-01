@@ -13,7 +13,8 @@ short_description: Bring an agent. Choose a world. Give it a mission. See what h
 
 An executable behavioral evaluation park for AI agents.
 
-Source: https://github.com/AgentAmusementPark/agent-amusement-park
+- Source: https://github.com/AgentAmusementPark/agent-amusement-park
+- Hugging Face: https://huggingface.co/spaces/AgentAmusementPark/agent-amusement-park
 
 **Bring an agent. Choose a world. Give it a mission. See what happens.**
 
@@ -63,7 +64,7 @@ Checkout remains disabled unless the operator explicitly sets an approved `CHECK
 
 ## Container deployment
 
-The included Dockerfile is configured for a Hugging Face Docker Space on port 7860. The free Space filesystem is not durable, so run files and anonymous event logs are temporary; the scorecard signature remains stable when its secret is configured in Space settings.
+The included Dockerfile serves the park on port 7860 and remains suitable for Docker-capable hosts. Hugging Face currently requires a paid plan for Docker compute, so the no-spend Hugging Face Space is an honest static project surface that links here rather than pretending to run the server-backed park. On ephemeral container hosts, run files and anonymous event logs are temporary; the scorecard signature remains stable when `PARK_SHARE_SECRET` is configured as a deployment secret.
 
 ## Evidence and limitations
 
