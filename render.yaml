@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: agent-amusement-park
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: npm start
+    healthCheckPath: /api/config
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: NODE_ENV
+        value: production
+      - key: PARK_SHARE_SECRET
+        generateValue: true

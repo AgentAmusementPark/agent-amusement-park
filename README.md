@@ -66,6 +66,8 @@ Checkout remains disabled unless the operator explicitly sets an approved `CHECK
 
 The included Dockerfile serves the park on port 7860 and remains suitable for Docker-capable hosts. Hugging Face currently requires a paid plan for Docker compute, so the no-spend Hugging Face Space is an honest static project surface that links here rather than pretending to run the server-backed park. On ephemeral container hosts, run files and anonymous event logs are temporary; the scorecard signature remains stable when `PARK_SHARE_SECRET` is configured as a deployment secret.
 
+For a no-spend server-backed test, `render.yaml` defines a free Render web service with a generated stable signing secret. Render's free service sleeps when idle and its filesystem is ephemeral, so saved runs and funnel events are test data rather than durable records.
+
 ## Evidence and limitations
 
 - Every trace entry includes the observation, submitted action, resulting events, and resulting world state.
