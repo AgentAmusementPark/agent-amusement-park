@@ -6,7 +6,9 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 COPY --chown=node:node . .
-RUN mkdir -p /app/runs && chown -R node:node /app/runs
+RUN mkdir -p /app/runs && \
+    touch /app/events.ndjson && \
+    chown -R node:node /app/runs /app/events.ndjson
 
 USER node
 EXPOSE 7860
