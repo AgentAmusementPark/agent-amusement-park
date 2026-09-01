@@ -32,13 +32,16 @@ function readPersistedRun(runId) {
   return JSON.parse(fs.readFileSync(path.join(runsDir, `${safeId}.json`), 'utf8'));
 }
 function recordEvent(name, metadata = {}) {
-  const allowed = new Set(['run_completed', 'scorecard_created', 'scorecard_viewed', 'challenge_started', 'team_page_viewed', 'checkout_clicked', 'contact_clicked']);
+  const allowed = new Set(['landing_viewed', 'run_completed', 'scorecard_created', 'scorecard_viewed', 'challenge_started', 'team_page_viewed', 'checkout_clicked', 'contact_clicked']);
   if (!allowed.has(name)) throw new Error('Unknown event.');
   if (fs.existsSync(eventsFile) && fs.statSync(eventsFile).size >= 5_000_000) return;
   const cleanMetadata = Object.fromEntries(Object.entries(metadata).slice(0, 8).map(([key, value]) => [String(key).slice(0, 40), String(value).slice(0, 120)]));
-  fs.appendFileSync(eventsFile, `${JSON.stringify({ at: new Date().toISOString(), name, metadata: cleanMetadata })}\n`);
+  const event = { at: new Date().toISOString(), name, metadata: cleanMetadata };
+  fs.appendFileSync(eventsFile, `${JSON.stringify(event)}\n`);
+  console.log(`[event] ${JSON.stringify(event)}`);
 }
 function safeHttpsUrl(value) { try { const parsed = new URL(value); return parsed.protocol === 'https:' ? parsed.toString() : ''; } catch { return ''; } }
+function cleanSource(value) { return /^[a-z0-9_-]{1,40}$/i.test(String(value || '')) ? String(value).toLowerCase() : 'direct'; }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
@@ -46,17 +49,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/rides') return json(res, 200, rides.map(publicRide));
     if (req.method === 'POST' && url.pathname === '/api/runs') {
       const body = await readBody(req); const result = await runRide(body);
-      persistRun(result); recordEvent('run_completed', { rideId: result.ride.id, agentType: result.agent.type, outcome: result.outcome, score: result.rating.score });
+      persistRun(result); recordEvent('run_completed', { source: cleanSource(body.source), rideId: result.ride.id, agentType: result.agent.type, outcome: result.outcome, score: result.rating.score });
       return json(res, 201, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/browser-runs') {
-      const result = createBrowserRun(await readBody(req)); persistRun(result); return json(res, 201, result);
+      const body = await readBody(req); const result = createBrowserRun(body); result.acquisitionSource = cleanSource(body.source); persistRun(result); return json(res, 201, result);
     }
     const browserActionMatch = url.pathname.match(/^\/api\/browser-runs\/([^/]+)\/actions$/);
     if (req.method === 'POST' && browserActionMatch) {
       const result = actInBrowserRun(decodeURIComponent(browserActionMatch[1]), (await readBody(req)).action);
       persistRun(result);
-      if (result.outcome !== 'in_progress') recordEvent('run_completed', { rideId: result.ride.id, agentType: 'browser', outcome: result.outcome, score: result.rating.score });
+      if (result.outcome !== 'in_progress') recordEvent('run_completed', { source: result.acquisitionSource || 'direct', rideId: result.ride.id, agentType: 'browser', outcome: result.outcome, score: result.rating.score });
       return json(res, 200, result);
     }
     const browserRunMatch = url.pathname.match(/^\/api\/browser-runs\/([^/]+)$/);
@@ -66,7 +69,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/shares') {
       const body = await readBody(req); const result = readPersistedRun(body.runId); const token = createShareToken(result);
-      recordEvent('scorecard_created', { rideId: result.ride.id, outcome: result.outcome, score: result.rating.score });
+      recordEvent('scorecard_created', { source: cleanSource(body.source), rideId: result.ride.id, outcome: result.outcome, score: result.rating.score });
       return json(res, 201, { token, path: `/share.html#${token}` });
     }
     if (req.method === 'POST' && url.pathname === '/api/shares/verify') {
@@ -94,3 +97,4 @@ if (require.main === module) {
   server.listen(port, host, () => console.log(`Agent Amusement Park running at http://${host}:${port}`));
 }
 module.exports = { server };
+
