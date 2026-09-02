@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 const { runRide, createBrowserRun, actInBrowserRun } = require('../lib/runner');
 const { rides } = require('../lib/rides');
 const { createShareToken, verifyShareToken, scorecardFor } = require('../lib/share');
-const { agentCard, handleA2A } = require('../lib/a2a');
+const { agentCard, commercialPath, handleA2A } = require('../lib/a2a');
 const { server } = require('../server');
 
 test('park exposes three materially different rides', () => {
@@ -66,6 +66,23 @@ test('A2A registry capability probe receives a valid completed response', () => 
   }).response;
   assert.equal(response.result.status.state, 'completed');
   assert.match(response.result.artifacts[0].parts[0].data.message, /behavioral evaluation rides/i);
+});
+
+test('A2A responses expose a non-payable commercial path only when contact is configured', () => {
+  const request = {
+    jsonrpc: '2.0', id: 'commercial-probe', method: 'message/send',
+    params: { message: { messageId: 'commercial-probe-message', role: 'user', parts: [{ text: 'Hello, what can you do?' }] } }
+  };
+  const withoutContact = handleA2A(request).response.result.artifacts[0].parts[0].data;
+  assert.equal(withoutContact.commercial, undefined);
+  const withContact = handleA2A(request, {
+    origin: 'https://park.example', salesEmail: 'a2apark@example.test', teamPrice: '€199/month'
+  }).response.result.artifacts[0].parts[0].data;
+  assert.deepEqual(withContact.commercial, commercialPath({
+    origin: 'https://park.example', salesEmail: 'a2apark@example.test', teamPrice: '€199/month'
+  }));
+  assert.equal(withContact.commercial.paymentAvailable, false);
+  assert.equal(withContact.commercial.planUrl, 'https://park.example/teams.html');
 });
 
 test('A2A callers can discover, start, and complete a stateful ride', () => {

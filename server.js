@@ -54,7 +54,14 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, agentCard(`${protocol}://${host}`));
     }
     if (req.method === 'POST' && url.pathname === '/a2a') {
-      const handled = handleA2A(await readBody(req));
+      const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+      const protocol = forwardedProto === 'https' ? 'https' : 'http';
+      const origin = `${protocol}://${req.headers.host || 'localhost'}`;
+      const handled = handleA2A(await readBody(req), {
+        origin,
+        salesEmail: process.env.SALES_EMAIL || '',
+        teamPrice: '€199/month'
+      });
       if (handled.run) persistRun(handled.run);
       if (handled.completed) recordEvent('run_completed', { source: handled.run.acquisitionSource || 'a2a_registry', rideId: handled.run.ride.id, agentType: 'a2a', outcome: handled.run.outcome, score: handled.run.rating.score });
       return json(res, handled.response.error ? 400 : 200, handled.response);
