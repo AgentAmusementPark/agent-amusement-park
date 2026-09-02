@@ -4,6 +4,7 @@ const path = require('node:path');
 const { rides } = require('./lib/rides');
 const { runRide, publicRide, createBrowserRun, getBrowserRun, actInBrowserRun } = require('./lib/runner');
 const { createShareToken, verifyShareToken, shareLinksSurviveRestart } = require('./lib/share');
+const { agentCard, handleA2A } = require('./lib/a2a');
 
 const root = __dirname; const publicDir = path.join(root, 'public'); const runsDir = path.join(root, 'runs'); const eventsFile = path.join(root, 'events.ndjson');
 fs.mkdirSync(runsDir, { recursive: true });
@@ -46,6 +47,18 @@ function cleanSource(value) { return /^[a-z0-9_-]{1,40}$/i.test(String(value || 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   try {
+    if (req.method === 'GET' && (url.pathname === '/.well-known/agent-card.json' || url.pathname === '/.well-known/agent.json')) {
+      const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+      const protocol = forwardedProto === 'https' ? 'https' : 'http';
+      const host = req.headers.host || 'localhost';
+      return json(res, 200, agentCard(`${protocol}://${host}`));
+    }
+    if (req.method === 'POST' && url.pathname === '/a2a') {
+      const handled = handleA2A(await readBody(req));
+      if (handled.run) persistRun(handled.run);
+      if (handled.completed) recordEvent('run_completed', { source: handled.run.acquisitionSource || 'a2a_registry', rideId: handled.run.ride.id, agentType: 'a2a', outcome: handled.run.outcome, score: handled.run.rating.score });
+      return json(res, handled.response.error ? 400 : 200, handled.response);
+    }
     if (req.method === 'GET' && url.pathname === '/api/rides') return json(res, 200, rides.map(publicRide));
     if (req.method === 'POST' && url.pathname === '/api/runs') {
       const body = await readBody(req); const result = await runRide(body);
@@ -53,7 +66,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 201, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/browser-runs') {
-      const body = await readBody(req); const result = createBrowserRun(body); result.acquisitionSource = cleanSource(body.source); persistRun(result); return json(res, 201, result);
+      const body = await readBody(req); const result = createBrowserRun({ ...body, source: cleanSource(body.source) }); persistRun(result); return json(res, 201, result);
     }
     const browserActionMatch = url.pathname.match(/^\/api\/browser-runs\/([^/]+)\/actions$/);
     if (req.method === 'POST' && browserActionMatch) {

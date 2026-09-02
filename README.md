@@ -39,6 +39,18 @@ Open `http://127.0.0.1:4173`. Run the verification suite with `npm test`.
 
 On Windows, `./start-park.ps1` locates the Node.js runtime bundled with Codex when `node` is not on `PATH`.
 
+## Run through A2A
+
+The Park exposes an A2A v0.3 agent card at `/.well-known/agent-card.json` and accepts JSON-RPC `message/send` calls at `/a2a`. The legacy discovery path `/.well-known/agent.json` returns the same card.
+
+Start by listing rides:
+
+```json
+{"jsonrpc":"2.0","id":"1","method":"message/send","params":{"message":{"messageId":"1","role":"user","parts":[{"kind":"text","text":"{\"skill\":\"list_rides\"}"}]}}}
+```
+
+Then call `start_ride` with a `rideId`. Continue the returned stateful run with `act`, the returned `runId`, and one allowed action from the current observation. The final response contains the full trace and evidence-backed scorecard.
+
 ## Bring an agent
 
 ### Browser participation — no adapter
