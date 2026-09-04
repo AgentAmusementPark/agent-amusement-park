@@ -6,7 +6,7 @@ const { runRide, publicRide, createBrowserRun, getBrowserRun, actInBrowserRun } 
 const { createShareToken, verifyShareToken, shareLinksSurviveRestart } = require('./lib/share');
 const { agentCard, handleA2A } = require('./lib/a2a');
 
-const root = __dirname; const publicDir = path.join(root, 'public'); const runsDir = path.join(root, 'runs'); const eventsFile = path.join(root, 'events.ndjson');
+const root = __dirname; const publicDir = path.join(root, 'public'); const runsDir = path.join(root, 'runs');
 fs.mkdirSync(runsDir, { recursive: true });
 
 const securityHeaders = {
@@ -32,54 +32,67 @@ function readPersistedRun(runId) {
   if (!safeId || safeId !== runId) throw new Error('Invalid run ID.');
   return JSON.parse(fs.readFileSync(path.join(runsDir, `${safeId}.json`), 'utf8'));
 }
-function recordEvent(name, metadata = {}) {
-  const allowed = new Set(['landing_viewed', 'run_completed', 'scorecard_created', 'scorecard_viewed', 'challenge_started', 'team_page_viewed', 'checkout_clicked', 'contact_clicked']);
-  if (!allowed.has(name)) throw new Error('Unknown event.');
-  if (fs.existsSync(eventsFile) && fs.statSync(eventsFile).size >= 5_000_000) return;
-  const cleanMetadata = Object.fromEntries(Object.entries(metadata).slice(0, 8).map(([key, value]) => [String(key).slice(0, 40), String(value).slice(0, 120)]));
-  const event = { at: new Date().toISOString(), name, metadata: cleanMetadata };
-  fs.appendFileSync(eventsFile, `${JSON.stringify(event)}\n`);
-  console.log(`[event] ${JSON.stringify(event)}`);
-}
 function safeHttpsUrl(value) { try { const parsed = new URL(value); return parsed.protocol === 'https:' ? parsed.toString() : ''; } catch { return ''; } }
-function cleanSource(value) { return /^[a-z0-9_-]{1,40}$/i.test(String(value || '')) ? String(value).toLowerCase() : 'direct'; }
+function safeHttpsOrigin(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' && parsed.pathname === '/' && !parsed.search && !parsed.hash ? parsed.origin : '';
+  } catch { return ''; }
+}
+function requestOrigin(req, env = process.env) {
+  const canonical = safeHttpsOrigin(env.CANONICAL_ORIGIN || '');
+  if (canonical) return canonical;
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const protocol = forwardedProto === 'https' ? 'https' : 'http';
+  return `${protocol}://${req.headers.host || 'localhost'}`;
+}
+function canonicalRedirect(req, url, env = process.env) {
+  const canonical = safeHttpsOrigin(env.CANONICAL_ORIGIN || '');
+  if (!canonical) return '';
+  const hostname = String(req.headers.host || '').split(':')[0].toLowerCase();
+  const redirectHosts = new Set(['www.a2apark.com', 'agent-amusement-park.onrender.com']);
+  for (const extra of String(env.CANONICAL_REDIRECT_HOSTS || '').split(',')) if (extra.trim()) redirectHosts.add(extra.trim().toLowerCase());
+  if (!redirectHosts.has(hostname)) return '';
+  return `${canonical}${url.pathname}${url.search}`;
+}
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   try {
+    const redirect = canonicalRedirect(req, url);
+    if (redirect) { res.writeHead(308, { ...securityHeaders, location: redirect, 'cache-control': 'public, max-age=3600' }); return res.end(); }
+    const origin = requestOrigin(req);
+    const benchOrigin = safeHttpsOrigin(process.env.BENCH_ORIGIN || '');
+    if (req.method === 'GET' && (url.pathname === '/bench' || url.pathname === '/teams.html') && benchOrigin) {
+      res.writeHead(308, { ...securityHeaders, location: `${benchOrigin}/${url.search}`, 'cache-control': 'public, max-age=3600' }); return res.end();
+    }
+    if (req.method === 'GET' && url.pathname === '/bench') return serveFile(res, path.join(publicDir, 'teams.html'));
     if (req.method === 'GET' && (url.pathname === '/.well-known/agent-card.json' || url.pathname === '/.well-known/agent.json')) {
-      const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
-      const protocol = forwardedProto === 'https' ? 'https' : 'http';
-      const host = req.headers.host || 'localhost';
-      return json(res, 200, agentCard(`${protocol}://${host}`));
+      return json(res, 200, agentCard(origin));
     }
     if (req.method === 'POST' && url.pathname === '/a2a') {
-      const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
-      const protocol = forwardedProto === 'https' ? 'https' : 'http';
-      const origin = `${protocol}://${req.headers.host || 'localhost'}`;
       const handled = handleA2A(await readBody(req), {
         origin,
         salesEmail: process.env.SALES_EMAIL || '',
-        teamPrice: '€199/month'
+        benchOrigin
       });
       if (handled.run) persistRun(handled.run);
-      if (handled.completed) recordEvent('run_completed', { source: handled.run.acquisitionSource || 'a2a_registry', rideId: handled.run.ride.id, agentType: 'a2a', outcome: handled.run.outcome, score: handled.run.rating.score });
       return json(res, handled.response.error ? 400 : 200, handled.response);
     }
     if (req.method === 'GET' && url.pathname === '/api/rides') return json(res, 200, rides.map(publicRide));
     if (req.method === 'POST' && url.pathname === '/api/runs') {
       const body = await readBody(req); const result = await runRide(body);
-      persistRun(result); recordEvent('run_completed', { source: cleanSource(body.source), rideId: result.ride.id, agentType: result.agent.type, outcome: result.outcome, score: result.rating.score });
+      persistRun(result);
       return json(res, 201, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/browser-runs') {
-      const body = await readBody(req); const result = createBrowserRun({ ...body, source: cleanSource(body.source) }); persistRun(result); return json(res, 201, result);
+      const result = createBrowserRun(await readBody(req)); persistRun(result);
+      return json(res, 201, { ...result, participantUrl: `${origin}${result.participantUrl}` });
     }
     const browserActionMatch = url.pathname.match(/^\/api\/browser-runs\/([^/]+)\/actions$/);
     if (req.method === 'POST' && browserActionMatch) {
       const result = actInBrowserRun(decodeURIComponent(browserActionMatch[1]), (await readBody(req)).action);
       persistRun(result);
-      if (result.outcome !== 'in_progress') recordEvent('run_completed', { source: result.acquisitionSource || 'direct', rideId: result.ride.id, agentType: 'browser', outcome: result.outcome, score: result.rating.score });
       return json(res, 200, result);
     }
     const browserRunMatch = url.pathname.match(/^\/api\/browser-runs\/([^/]+)$/);
@@ -89,19 +102,16 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/shares') {
       const body = await readBody(req); const result = readPersistedRun(body.runId); const token = createShareToken(result);
-      recordEvent('scorecard_created', { source: cleanSource(body.source), rideId: result.ride.id, outcome: result.outcome, score: result.rating.score });
-      return json(res, 201, { token, path: `/share.html#${token}` });
+      const sharePath = `/share.html#${token}`;
+      return json(res, 201, { token, path: sharePath, url: `${origin}${sharePath}` });
     }
     if (req.method === 'POST' && url.pathname === '/api/shares/verify') {
       const scorecard = verifyShareToken((await readBody(req)).token); return json(res, 200, scorecard);
     }
-    if (req.method === 'POST' && url.pathname === '/api/events') {
-      const body = await readBody(req); recordEvent(body.name, body.metadata); return json(res, 202, { ok: true });
-    }
     if (req.method === 'GET' && url.pathname === '/api/config') return json(res, 200, {
-      externalAdaptersEnabled: process.env.ALLOW_LOCAL_ADAPTERS === 'true',
+      externalAdaptersEnabled: process.env.NODE_ENV !== 'production' || process.env.ALLOW_LOCAL_ADAPTERS === 'true',
       checkoutUrl: safeHttpsUrl(process.env.CHECKOUT_URL || ''), salesEmail: process.env.SALES_EMAIL || '',
-      teamPrice: '€199/month', shareLinksSurviveRestart: shareLinksSurviveRestart()
+      canonicalOrigin: origin, benchOrigin, benchAvailable: Boolean(benchOrigin), shareLinksSurviveRestart: shareLinksSurviveRestart()
     });
     if (req.method === 'GET' && url.pathname === '/api/health') return json(res, 200, { ok: true, rides: rides.length, shareLinksSurviveRestart: shareLinksSurviveRestart() });
     const requested = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
@@ -114,7 +124,6 @@ const server = http.createServer(async (req, res) => {
 if (require.main === module) {
   const port = Number(process.env.PORT || 4173);
   const host = process.env.HOST || '127.0.0.1';
-  server.listen(port, host, () => console.log(`Agent Amusement Park running at http://${host}:${port}`));
+  server.listen(port, host, () => console.log(`A2APark running at http://${host}:${port}`));
 }
-module.exports = { server };
-
+module.exports = { server, safeHttpsOrigin, requestOrigin, canonicalRedirect };

@@ -4,7 +4,7 @@ This is an engineering boundary, not legal advice. Obtain qualified counsel befo
 
 ## Public program
 
-Everything in this repository is the **public Agent Amusement Park program** and is released under `AGPL-3.0-only`, unless a file explicitly states another license.
+Everything in this repository is the **public A2APark program** and is released under `AGPL-3.0-only`, unless a file explicitly states another license.
 
 That includes:
 
@@ -19,7 +19,7 @@ Anyone operating a modified version of this program for users over a network mus
 
 ## Separately monetized product
 
-**Private Park** is a separate product and must be implemented outside this repository. Candidate proprietary components include:
+**A2AParkBench** is a planned separate product and must be implemented outside this repository. Candidate proprietary components include:
 
 - account, organisation, tenant, role, and entitlement services;
 - billing, invoicing, tax, cancellation, and refund systems;
@@ -32,7 +32,7 @@ These components should live in separate repositories, deploy as separate proces
 
 A process boundary alone is not a magic exemption. If the communication becomes sufficiently intimate that the components are effectively one combined program, obtain specific legal advice or publish the combined source under AGPL.
 
-## Public engine use inside Private Park
+## Public engine use inside A2AParkBench
 
 The conservative architecture is:
 
@@ -52,4 +52,4 @@ Do not copy a third-party AGPL contribution into a proprietary component or comm
 
 ## Repository rule
 
-No proprietary Private Park source, customer data, secrets, private ride packs, checkout credentials, or commercial deployment configuration belongs in this repository.
+No proprietary A2AParkBench source, customer data, secrets, private ride packs, checkout credentials, or commercial deployment configuration belongs in this repository.

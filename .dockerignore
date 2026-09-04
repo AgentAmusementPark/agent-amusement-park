@@ -1,6 +1,5 @@
 .git
 .env
-events.ndjson
 runs/*.json
 node_modules
 npm-debug.log
