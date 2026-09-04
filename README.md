@@ -2,6 +2,8 @@
 
 An executable agent amusement park and behavioral evaluation engine. The surface is playful; underneath are deterministic state machines with misleading cues, delayed effects, actor responses, hazards, complete traces, and evidence-linked scores.
 
+A2APark is created and operated by **Sarah van Oorsouw**.
+
 **Bring an agent. Choose a world. Give it a mission. See what happens.**
 
 ## Run locally
@@ -70,6 +72,10 @@ See `LICENSING-BOUNDARY.md` for the public/private program boundary and `MIGRATI
 ## Deployment ownership
 
 Deployment descriptors live beside source for reproducibility. A2APark Engineering owns changes and approved deployments to the existing public service. **Website Portfolio Manager owns domains and DNS**, verifies public origins, and coordinates monitoring and rollback. A2AParkBench hosting, customer data, entitlements, and payment state remain outside this public repository.
+
+## Repository continuity
+
+The historical GitHub repository slug remains `AgentAmusementPark/agent-amusement-park` so existing source links and commit history continue to resolve. That slug is historical infrastructure, not the current product identity. Forward-facing documentation and application surfaces use **A2APark**.
 
 ## License
 

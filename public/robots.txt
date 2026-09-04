@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /a2a
+Disallow: /.well-known/
+Sitemap: https://a2apark.com/sitemap.xml

@@ -8,7 +8,7 @@ const { runRide, createBrowserRun, actInBrowserRun } = require('../lib/runner');
 const { rides } = require('../lib/rides');
 const { createShareToken, verifyShareToken, scorecardFor } = require('../lib/share');
 const { agentCard, commercialPath, handleA2A } = require('../lib/a2a');
-const { server, safeHttpsOrigin, requestOrigin, canonicalRedirect } = require('../server');
+const { server, safeHttpsOrigin, requestOrigin, canonicalRedirect, structuredData } = require('../server');
 
 test('park exposes three materially different rides', () => {
   assert.deepEqual(rides.map(r => r.id), ['bureaucracy', 'market', 'hostileweb']);
@@ -60,7 +60,10 @@ test('A2A card advertises a callable standards endpoint and park skills', () => 
   assert.equal(card.protocolVersion, '0.3.0');
   assert.equal(card.name, 'A2APark');
   assert.equal(card.provider.organization, 'A2APark');
+  assert.match(card.description, /Created and operated by Sarah van Oorsouw/);
   assert.equal(card.url, 'https://a2apark.com/a2a');
+  assert.equal(card.preferredTransport, 'JSONRPC');
+  assert.deepEqual(card.supportedInterfaces, [{ url: 'https://a2apark.com/a2a', protocolBinding: 'JSONRPC', protocolVersion: '0.3' }]);
   assert.deepEqual(card.skills.map(skill => skill.id), ['list-rides', 'start-ride', 'act-in-ride']);
 });
 
@@ -115,6 +118,14 @@ test('forward-facing pages use A2APark identity and canonical metadata', () => {
   const teams = fs.readFileSync(path.join(__dirname, '..', 'public', 'teams.html'), 'utf8');
   assert.match(teams, /A2AParkBench is not yet open/);
   assert.doesNotMatch(teams, /€199|useful-signal guarantee/i);
+  const home = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.match(home, /Created and operated by Sarah van Oorsouw/);
+  assert.match(home, new RegExp(`<script type="application/ld\\+json">${structuredData.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}</script>`));
+  const robots = fs.readFileSync(path.join(__dirname, '..', 'public', 'robots.txt'), 'utf8');
+  assert.match(robots, /Sitemap: https:\/\/a2apark\.com\/sitemap\.xml/);
+  const sitemap = fs.readFileSync(path.join(__dirname, '..', 'public', 'sitemap.xml'), 'utf8');
+  assert.match(sitemap, /https:\/\/a2apark\.com\/teams\.html/);
+  assert.doesNotMatch(sitemap, /<loc>https:\/\/a2apark\.com\/(?:a2a|\.well-known)/);
 });
 
 test('legacy Render ingress redirects every public interface in one hop without losing attribution', async () => {
@@ -192,6 +203,7 @@ test('A2A discovery and message sending work over HTTP', async () => {
     assert.equal(cardResponse.status, 200);
     assert.equal(card.name, 'A2APark');
     assert.equal(card.url, `${origin}/a2a`);
+    assert.deepEqual(card.supportedInterfaces, [{ url: `${origin}/a2a`, protocolBinding: 'JSONRPC', protocolVersion: '0.3' }]);
     const rpcResponse = await fetch(`${origin}/a2a`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', id: 'http-test', method: 'message/send', params: { message: { messageId: 'http-test-message', role: 'user', parts: [{ kind: 'text', text: '{"skill":"list_rides"}' }] } } })
@@ -210,6 +222,15 @@ test('A2A discovery and message sending work over HTTP', async () => {
     const benchResponse = await fetch(`${origin}/bench`);
     assert.equal(benchResponse.status, 200);
     assert.match(await benchResponse.text(), /A2AParkBench is not yet open/);
+    const robotsResponse = await fetch(`${origin}/robots.txt`);
+    assert.equal(robotsResponse.status, 200);
+    assert.match(robotsResponse.headers.get('content-type'), /^text\/plain/);
+    const sitemapResponse = await fetch(`${origin}/sitemap.xml`);
+    assert.equal(sitemapResponse.status, 200);
+    assert.match(sitemapResponse.headers.get('content-type'), /^application\/xml/);
+    const homeResponse = await fetch(`${origin}/`);
+    const expectedHash = crypto.createHash('sha256').update(structuredData).digest('base64');
+    assert.match(homeResponse.headers.get('content-security-policy'), new RegExp(`sha256-${expectedHash.replace(/[+]/g, '\\+')}`));
   } finally {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }

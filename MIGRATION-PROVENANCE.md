@@ -84,3 +84,9 @@ Forward-facing product identity was changed from **Agent Amusement Park** to **A
 - `/teams.html` and `/bench` keep serving the local truthful A2AParkBench status page while `BENCH_ORIGIN` is unset. They redirect only after a separate HTTPS Bench origin is explicitly configured and verified.
 - The public Bench page does not claim that private retention, comparison, entitlements, CI gating, checkout, or payments are currently available.
 - Historical run files, signed-scorecard evidence, migration evidence, the legacy repository/Render service name, and the internal legacy third-ride alias were not rewritten.
+
+## AAP-000 production identity remediation
+
+The production identity patch adds truthful responsibility attribution for **Sarah van Oorsouw** as A2APark's creator and operator without asserting credentials or certifications. The homepage includes matching `WebSite` JSON-LD with `Person` creator and publisher entries, protected by a content-security-policy hash. `robots.txt` permits public HTML crawling while excluding API and discovery interfaces; `sitemap.xml` lists only canonical indexable HTML pages. Dynamic participant and scorecard pages declare `noindex,follow`.
+
+The Agent Card keeps its v0.3 compatibility fields and now also declares one `supportedInterfaces` entry for the actually implemented JSON-RPC endpoint at protocol version `0.3`. This is a compatibility declaration, not a claim of A2A 1.0 support or TCK conformance. The historical GitHub slug, Render service name, evidence, and compatibility identifiers remain unchanged.

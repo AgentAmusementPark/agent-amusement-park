@@ -1,4 +1,5 @@
 const http = require('node:http');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { rides } = require('./lib/rides');
@@ -9,14 +10,16 @@ const { agentCard, handleA2A } = require('./lib/a2a');
 const root = __dirname; const publicDir = path.join(root, 'public'); const runsDir = path.join(root, 'runs');
 fs.mkdirSync(runsDir, { recursive: true });
 
+const structuredData = '{"@context":"https://schema.org","@type":"WebSite","name":"A2APark","url":"https://a2apark.com/","description":"An agent amusement park and behavioral evaluation engine with evidence-backed scorecards.","creator":{"@type":"Person","name":"Sarah van Oorsouw"},"publisher":{"@type":"Person","name":"Sarah van Oorsouw"}}';
+const structuredDataHash = crypto.createHash('sha256').update(structuredData).digest('base64');
 const securityHeaders = {
-  'content-security-policy': "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+  'content-security-policy': `default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self' 'sha256-${structuredDataHash}'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`,
   'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY'
 };
 function json(res, status, body) { res.writeHead(status, { ...securityHeaders, 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); }
 function readBody(req) { return new Promise((resolve, reject) => { let body = ''; req.on('data', chunk => { body += chunk; if (body.length > 1_000_000) req.destroy(); }); req.on('end', () => { try { resolve(JSON.parse(body || '{}')); } catch (e) { reject(e); } }); req.on('error', reject); }); }
 function serveFile(res, file) {
-  const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml' };
+  const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.jsonld': 'application/ld+json; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8' };
   fs.readFile(file, (error, data) => { if (error) return json(res, 404, { error: 'Not found' }); res.writeHead(200, { ...securityHeaders, 'content-type': types[path.extname(file)] || 'application/octet-stream' }); res.end(data); });
 }
 function persistRun(result) {
@@ -126,4 +129,4 @@ if (require.main === module) {
   const host = process.env.HOST || '127.0.0.1';
   server.listen(port, host, () => console.log(`A2APark running at http://${host}:${port}`));
 }
-module.exports = { server, safeHttpsOrigin, requestOrigin, canonicalRedirect };
+module.exports = { server, safeHttpsOrigin, requestOrigin, canonicalRedirect, structuredData };
