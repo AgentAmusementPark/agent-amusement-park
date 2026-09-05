@@ -71,7 +71,8 @@ const server = http.createServer(async (req, res) => {
     if (redirect) { res.writeHead(308, { ...securityHeaders, location: redirect, 'cache-control': 'public, max-age=3600' }); return res.end(); }
     const origin = requestOrigin(req);
     const benchOrigin = safeHttpsOrigin(process.env.BENCH_ORIGIN || '');
-    if (req.method === 'GET' && (url.pathname === '/bench' || url.pathname === '/teams.html') && benchOrigin) {
+    const benchPublicWebsiteAvailable = Boolean(benchOrigin);
+    if (req.method === 'GET' && url.pathname === '/bench' && benchPublicWebsiteAvailable) {
       res.writeHead(308, { ...securityHeaders, location: `${benchOrigin}/${url.search}`, 'cache-control': 'public, max-age=3600' }); return res.end();
     }
     if (req.method === 'GET' && url.pathname === '/bench') return serveFile(res, path.join(publicDir, 'teams.html'));
@@ -119,7 +120,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/config') return json(res, 200, {
       externalAdaptersEnabled: externalAdaptersEnabled(),
       checkoutUrl: safeHttpsUrl(process.env.CHECKOUT_URL || ''), salesEmail: process.env.SALES_EMAIL || '',
-      canonicalOrigin: origin, benchOrigin, benchAvailable: Boolean(benchOrigin), shareLinksSurviveRestart: shareLinksSurviveRestart()
+      canonicalOrigin: origin, benchOrigin,
+      benchPublicWebsiteAvailable,
+      benchAvailable: benchPublicWebsiteAvailable,
+      benchPrivateWorkflowsAvailable: false,
+      benchPaidAccessAvailable: false,
+      shareLinksSurviveRestart: shareLinksSurviveRestart()
     });
     if (req.method === 'GET' && url.pathname === '/api/health') return json(res, 200, { ok: true, rides: rides.length, shareLinksSurviveRestart: shareLinksSurviveRestart() });
     if (req.method === 'GET' && url.pathname === '/favicon.ico') return serveFile(res, path.join(publicDir, 'favicon.svg'));

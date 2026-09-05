@@ -17,9 +17,9 @@ That includes:
 
 Anyone operating a modified version of this program for users over a network must comply with the AGPL, including its network-source obligations. Improvements to this public program are expected to remain public.
 
-## Separately monetized product
+## Separately monetized private product
 
-**A2AParkBench** is a planned separate product and must be implemented outside this repository. Candidate proprietary components include:
+The A2AParkBench public website, released free runner/action, and fixed public corpus are separate public artifacts with their own stated licences. **Private and paid A2AParkBench capabilities** must be implemented outside this repository. Candidate proprietary components include:
 
 - account, organisation, tenant, role, and entitlement services;
 - billing, invoicing, tax, cancellation, and refund systems;

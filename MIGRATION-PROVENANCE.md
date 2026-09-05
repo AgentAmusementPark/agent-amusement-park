@@ -75,13 +75,13 @@ The smallest follow-up is to label rubric items as **required**, **safety constr
 
 ## 2026-09-04 public identity implementation
 
-Forward-facing product identity was changed from **Agent Amusement Park** to **A2APark**. **A2AParkBench** now names the planned behavioral benchmark and CI regression component. The previous product names remain in this provenance record, dated evidence, source/deployment paths, repository history, and compatibility identifiers where changing them would damage historical or external-link continuity.
+Forward-facing product identity was changed from **Agent Amusement Park** to **A2APark**. **A2AParkBench** names the behavioral benchmark, CI, evaluation, failure-corpus, and licensed-feed component. Its public website and free artifacts are released; its private and paid capabilities remain gated. The previous product names remain in this provenance record, dated evidence, source/deployment paths, repository history, and compatibility identifiers where changing them would damage historical or external-link continuity.
 
 - Canonical public origin: `https://a2apark.com` via `CANONICAL_ORIGIN`.
 - Permanent legacy ingress: `https://agent-amusement-park.onrender.com` remains enabled and receives method-preserving `308` redirects to the same canonical path and complete query string. This preserves published attribution such as `?src=reddit_ai_agents`.
 - `https://www.a2apark.com` receives the same one-hop canonical redirect behavior.
 - Discovery documents, A2A endpoint identity, generated participant links, and generated scorecard links use the configured canonical origin.
-- `/teams.html` and `/bench` keep serving the local truthful A2AParkBench status page while `BENCH_ORIGIN` is unset. They redirect only after a separate HTTPS Bench origin is explicitly configured and verified.
+- `/teams.html` remains the local truthful A2AParkBench capability-boundary page. `/bench` serves that page while `BENCH_ORIGIN` is unset and becomes a convenience redirect to the public Bench website when the HTTPS origin is configured.
 - The public Bench page does not claim that private retention, comparison, entitlements, CI gating, checkout, or payments are currently available.
 - Historical run files, signed-scorecard evidence, migration evidence, the legacy repository/Render service name, and the internal legacy third-ride alias were not rewritten.
 
@@ -96,3 +96,9 @@ The Agent Card keeps its v0.3 compatibility fields and now also declares one `su
 At release preparation, the observed production service reported revision `51c2d5f96127a33dcdc982b00238fd65c66c1706`; GitHub already contained source revision `60e88d2d40b3e311728b8283fca86bf587769470`. Render was reported as **On Commit**, and the effective service configuration did not yet contain `CANONICAL_ORIGIN`.
 
 A2APark Engineering owns these source repairs, their regression tests, and the release handoff. Website Portfolio Manager owns setting `CANONICAL_ORIGIN=https://a2apark.com`, sequencing publication and deployment, and validating canonical and legacy-host behavior after deployment. Preparing or committing this source is not deployment authorization or production-validation evidence. No historical run, scorecard, protocol version, compatibility alias, or predecessor evidence is rewritten by this repair.
+
+## A2AP-REL-2026-09-05 relationship contract implementation
+
+`BENCH_ORIGIN` identifies only the canonical public A2AParkBench website. `benchPublicWebsiteAvailable` reports whether that navigation origin is configured; `benchAvailable` remains an API-compatibility alias with the same public-navigation-only meaning. `benchPrivateWorkflowsAvailable` and `benchPaidAccessAvailable` remain explicitly false. No field enables an account, entitlement, private workflow, paid CI path, immediate fulfilment, or checkout.
+
+The local `/teams.html` explanation route no longer redirects when `BENCH_ORIGIN` is configured. `/bench` alone is the optional convenience redirect. The permanent legacy ingress still redirects first to the equivalent A2APark path with the complete query string. Website Portfolio Manager owns applying `BENCH_ORIGIN=https://bench.a2apark.com` to the effective production service and validating the resulting convenience redirect after Maestro accepts a published revision.

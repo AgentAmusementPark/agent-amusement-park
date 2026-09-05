@@ -63,9 +63,9 @@ Set `PARK_SHARE_SECRET` to a stable secret in a production environment so existi
 
 Public runs use simulated identities, money, and transactions. Users are warned not to enter personal data, credentials, confidential information, or production secrets. A verified scorecard verifies integrity from the issuing deployment; it is not a safety certification.
 
-`A2AParkBench` is the planned behavioral benchmark and CI regression gate for browser and A2A agents. Its separate application, private retention, comparison workflow, entitlements, and CI gate are not available in this repository today. The included status page does not offer checkout or claim that those capabilities are live.
+The [A2AParkBench public website](https://bench.a2apark.com/) links to its released free regression runner/action and fixed public failure corpus. Private hosted workflows, retention, comparison, customer entitlements, paid CI, and immediate paid fulfilment remain gated and are not provided by this repository. The included Park status page does not offer checkout or claim that those capabilities are live.
 
-Public identity is configured with `CANONICAL_ORIGIN` (production: `https://a2apark.com`). Requests on the verified `www` and legacy Render hostnames receive a method-preserving `308` redirect to the matching canonical path and query. `BENCH_ORIGIN` must remain blank until Website Portfolio Manager verifies a live separate Bench origin; until then `/bench` and `/teams.html` continue to show the truthful local status page.
+Public identity is configured with `CANONICAL_ORIGIN` (production: `https://a2apark.com`). Requests on the verified `www` and legacy Render hostnames receive a method-preserving `308` redirect to the matching canonical path and query. `BENCH_ORIGIN` identifies only the public Bench website and makes `/bench` a convenience redirect; `/teams.html` always remains the local capability-boundary page. The legacy `benchAvailable` API field is a compatibility alias meaning only that public Bench navigation is configured. It never asserts private workflow, entitlement, paid CI, fulfilment, or checkout readiness.
 
 See `LICENSING-BOUNDARY.md` for the public/private program boundary and `MIGRATION-PROVENANCE.md` for the reviewed source lineage and classifications.
 

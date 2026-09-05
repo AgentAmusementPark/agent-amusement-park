@@ -15,5 +15,7 @@ services:
         value: https://a2apark.com
       - key: CANONICAL_REDIRECT_HOSTS
         value: www.a2apark.com,agent-amusement-park.onrender.com
+      - key: BENCH_ORIGIN
+        value: https://bench.a2apark.com
       - key: PARK_SHARE_SECRET
         generateValue: true

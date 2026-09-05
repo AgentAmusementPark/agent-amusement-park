@@ -9,6 +9,7 @@ const { rides } = require('../lib/rides');
 const { createShareToken, verifyShareToken, scorecardFor } = require('../lib/share');
 const { agentCard, commercialPath, handleA2A } = require('../lib/a2a');
 const { server, safeHttpsOrigin, requestOrigin, canonicalRedirect, structuredData } = require('../server');
+const benchAvailabilityCopy = 'The A2AParkBench public website is available, with links to the free regression runner and public failure corpus. Private team workflows and paid access remain gated; live checkout is not enabled.';
 
 test('park exposes three materially different rides', () => {
   assert.deepEqual(rides.map(r => r.id), ['bureaucracy', 'market', 'hostileweb']);
@@ -101,6 +102,14 @@ test('A2A responses expose a non-payable commercial path only when contact is co
   assert.equal(withContact.commercial.paymentAvailable, false);
   assert.equal(withContact.commercial.product, 'A2AParkBench');
   assert.equal(withContact.commercial.planUrl, 'https://a2apark.com/teams.html');
+  assert.equal(withContact.commercial.note, benchAvailabilityCopy);
+  const withBenchWebsite = handleA2A(request, {
+    origin: 'https://a2apark.com', salesEmail: 'a2apark@example.test', benchOrigin: 'https://bench.a2apark.com'
+  }).response.result.artifacts[0].parts[0].data.commercial;
+  assert.equal(withBenchWebsite.status, 'interest_only');
+  assert.equal(withBenchWebsite.planUrl, 'https://bench.a2apark.com/');
+  assert.equal(withBenchWebsite.paymentAvailable, false);
+  assert.match(withBenchWebsite.description, /Private hosted workflows, customer entitlement, and paid CI remain gated/);
 });
 
 test('canonical origin and legacy-host redirects preserve paths and queries', () => {
@@ -125,8 +134,14 @@ test('forward-facing pages use A2APark identity and canonical metadata', () => {
     assert.doesNotMatch(html, /Agent Amusement Park|Private Park/);
   }
   const teams = fs.readFileSync(path.join(__dirname, '..', 'public', 'teams.html'), 'utf8');
-  assert.match(teams, /A2AParkBench is not yet open/);
+  assert.match(teams, /Public resources available/);
   assert.doesNotMatch(teams, /€199|useful-signal guarantee/i);
+  for (const page of ['index.html', 'play.html', 'share.html', 'legal.html', 'teams.html']) {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public', page), 'utf8');
+    assert.match(html, new RegExp(benchAvailabilityCopy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), page);
+    assert.match(html, /href="https:\/\/bench\.a2apark\.com\/"[^>]*>Explore A2AParkBench/, page);
+    assert.doesNotMatch(html, /A2AParkBench is not yet open|separate Bench service is not yet open/, page);
+  }
   const home = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   assert.match(home, /Created and operated by Sarah van Oorsouw/);
   assert.match(home, /id="how-it-works"/);
@@ -146,7 +161,11 @@ test('forward-facing pages use A2APark identity and canonical metadata', () => {
 
 test('legacy Render ingress redirects every public interface in one hop without losing attribution', async () => {
   const previousCanonical = process.env.CANONICAL_ORIGIN;
+  const previousBench = process.env.BENCH_ORIGIN;
+  const previousCheckout = process.env.CHECKOUT_URL;
   process.env.CANONICAL_ORIGIN = 'https://a2apark.com';
+  process.env.BENCH_ORIGIN = 'https://bench.a2apark.com';
+  delete process.env.CHECKOUT_URL;
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   const request = ({ path: requestPath, method = 'GET', host = 'agent-amusement-park.onrender.com', body = '' }) => new Promise((resolve, reject) => {
@@ -179,9 +198,25 @@ test('legacy Render ingress redirects every public interface in one hop without 
     const canonicalRpc = await request({ path: '/a2a', method: 'POST', host: 'a2apark.com', body: rpcBody });
     assert.equal(canonicalRpc.status, 200);
     assert.equal(JSON.parse(canonicalRpc.body).result.status.state, 'completed');
+    const canonicalTeams = await request({ path: '/teams.html?src=local_boundary', host: 'a2apark.com' });
+    assert.equal(canonicalTeams.status, 200);
+    assert.match(canonicalTeams.body, /Public resources available/);
+    const benchConvenience = await request({ path: '/bench?src=park', host: 'a2apark.com' });
+    assert.equal(benchConvenience.status, 308);
+    assert.equal(benchConvenience.location, 'https://bench.a2apark.com/?src=park');
+    const configResponse = await request({ path: '/api/config', host: 'a2apark.com' });
+    const config = JSON.parse(configResponse.body);
+    assert.equal(config.benchOrigin, 'https://bench.a2apark.com');
+    assert.equal(config.benchPublicWebsiteAvailable, true);
+    assert.equal(config.benchAvailable, true);
+    assert.equal(config.benchPrivateWorkflowsAvailable, false);
+    assert.equal(config.benchPaidAccessAvailable, false);
+    assert.equal(config.checkoutUrl, '');
   } finally {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     if (previousCanonical === undefined) delete process.env.CANONICAL_ORIGIN; else process.env.CANONICAL_ORIGIN = previousCanonical;
+    if (previousBench === undefined) delete process.env.BENCH_ORIGIN; else process.env.BENCH_ORIGIN = previousBench;
+    if (previousCheckout === undefined) delete process.env.CHECKOUT_URL; else process.env.CHECKOUT_URL = previousCheckout;
   }
 });
 
@@ -237,7 +272,14 @@ test('A2A discovery and message sending work over HTTP', async () => {
     assert.equal(share.url, `${origin}${share.path}`);
     const benchResponse = await fetch(`${origin}/bench`);
     assert.equal(benchResponse.status, 200);
-    assert.match(await benchResponse.text(), /A2AParkBench is not yet open/);
+    assert.match(await benchResponse.text(), /Public resources available/);
+    const configResponse = await fetch(`${origin}/api/config`);
+    const config = await configResponse.json();
+    assert.equal(config.benchOrigin, '');
+    assert.equal(config.benchPublicWebsiteAvailable, false);
+    assert.equal(config.benchAvailable, false);
+    assert.equal(config.benchPrivateWorkflowsAvailable, false);
+    assert.equal(config.benchPaidAccessAvailable, false);
     const robotsResponse = await fetch(`${origin}/robots.txt`);
     assert.equal(robotsResponse.status, 200);
     assert.match(robotsResponse.headers.get('content-type'), /^text\/plain/);
@@ -330,4 +372,13 @@ test('scorecard evidence counts hazards and execution errors', async () => {
   const run = await runRide({ rideId: 'market', agent: { type: 'builtin', id: 'reckless' } });
   const scorecard = scorecardFor(run);
   assert.ok(scorecard.run.evidence.hazards > 0); assert.equal(scorecard.run.evidence.steps, run.trace.length);
+});
+
+test('public/private licensing boundary remains explicit', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const boundary = fs.readFileSync(path.join(__dirname, '..', 'LICENSING-BOUNDARY.md'), 'utf8');
+  assert.equal(pkg.license, 'AGPL-3.0-only');
+  assert.match(boundary, /released free runner\/action, and fixed public corpus are separate public artifacts with their own stated licences/);
+  assert.match(boundary, /Private and paid A2AParkBench capabilities/);
+  assert.match(boundary, /No proprietary A2AParkBench source, customer data, secrets, private ride packs, checkout credentials/);
 });
