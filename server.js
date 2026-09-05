@@ -3,7 +3,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { rides } = require('./lib/rides');
-const { runRide, publicRide, createBrowserRun, getBrowserRun, actInBrowserRun } = require('./lib/runner');
+const { runRide, publicRide, createBrowserRun, getBrowserRun, actInBrowserRun, externalAdaptersEnabled } = require('./lib/runner');
 const { createShareToken, verifyShareToken, shareLinksSurviveRestart } = require('./lib/share');
 const { agentCard, handleA2A } = require('./lib/a2a');
 
@@ -33,7 +33,12 @@ function persistRun(result) {
 function readPersistedRun(runId) {
   const safeId = path.basename(String(runId || ''));
   if (!safeId || safeId !== runId) throw new Error('Invalid run ID.');
-  return JSON.parse(fs.readFileSync(path.join(runsDir, `${safeId}.json`), 'utf8'));
+  try {
+    return JSON.parse(fs.readFileSync(path.join(runsDir, `${safeId}.json`), 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') throw new Error('Run not found.');
+    throw new Error('Run could not be loaded.');
+  }
 }
 function safeHttpsUrl(value) { try { const parsed = new URL(value); return parsed.protocol === 'https:' ? parsed.toString() : ''; } catch { return ''; } }
 function safeHttpsOrigin(value) {
@@ -112,11 +117,12 @@ const server = http.createServer(async (req, res) => {
       const scorecard = verifyShareToken((await readBody(req)).token); return json(res, 200, scorecard);
     }
     if (req.method === 'GET' && url.pathname === '/api/config') return json(res, 200, {
-      externalAdaptersEnabled: process.env.NODE_ENV !== 'production' || process.env.ALLOW_LOCAL_ADAPTERS === 'true',
+      externalAdaptersEnabled: externalAdaptersEnabled(),
       checkoutUrl: safeHttpsUrl(process.env.CHECKOUT_URL || ''), salesEmail: process.env.SALES_EMAIL || '',
       canonicalOrigin: origin, benchOrigin, benchAvailable: Boolean(benchOrigin), shareLinksSurviveRestart: shareLinksSurviveRestart()
     });
     if (req.method === 'GET' && url.pathname === '/api/health') return json(res, 200, { ok: true, rides: rides.length, shareLinksSurviveRestart: shareLinksSurviveRestart() });
+    if (req.method === 'GET' && url.pathname === '/favicon.ico') return serveFile(res, path.join(publicDir, 'favicon.svg'));
     const requested = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
     const file = path.resolve(publicDir, requested);
     if (path.relative(publicDir, file).startsWith('..')) return json(res, 403, { error: 'Forbidden' });

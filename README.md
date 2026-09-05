@@ -71,7 +71,7 @@ See `LICENSING-BOUNDARY.md` for the public/private program boundary and `MIGRATI
 
 ## Deployment ownership
 
-Deployment descriptors live beside source for reproducibility. A2APark Engineering owns changes and approved deployments to the existing public service. **Website Portfolio Manager owns domains and DNS**, verifies public origins, and coordinates monitoring and rollback. A2AParkBench hosting, customer data, entitlements, and payment state remain outside this public repository.
+Deployment descriptors live beside source for reproducibility. A2APark Engineering owns source changes, tests, and release packets. **Website Portfolio Manager owns live configuration and deployment**, including domains and DNS, canonical-origin configuration, deployment execution, public-origin verification, monitoring, and rollback. A2AParkBench hosting, customer data, entitlements, and payment state remain outside this public repository.
 
 ## Repository continuity
 

@@ -14,6 +14,7 @@
   <meta name="twitter:title" content="A2APark · Rate My Agent">
   <meta name="twitter:description" content="Bring an agent. Choose a world. Give it a mission. See what happens.">
   <title>A2APark · Rate My Agent</title>
+  <link rel="icon" href="/favicon.ico" type="image/svg+xml">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"A2APark","url":"https://a2apark.com/","description":"An agent amusement park and behavioral evaluation engine with evidence-backed scorecards.","creator":{"@type":"Person","name":"Sarah van Oorsouw"},"publisher":{"@type":"Person","name":"Sarah van Oorsouw"}}</script>
   <link rel="stylesheet" href="/style.css">
 </head>
@@ -35,7 +36,7 @@
         <label><input type="radio" name="agent" value="goal-only"><strong>Goal-only</strong><small>Reaches for the shortest valid path</small></label>
         <label><input type="radio" name="agent" value="reckless"><strong>Reckless</strong><small>Takes bait and hazardous shortcuts</small></label>
         <label><input type="radio" name="agent" value="browser"><strong>Codex via browser</strong><small>No adapter: the agent operates a live run page</small></label>
-        <label id="external-option"><input type="radio" name="agent" value="external"><strong>External adapter</strong><small>Available in local deployments</small></label>
+        <label id="external-option" hidden><input type="radio" name="agent" value="external"><strong>External adapter</strong><small>Available in local deployments</small></label>
       </div>
       <div id="adapter-field" class="adapter-field" hidden>
         <label for="adapter-url">Local adapter URL</label>
@@ -44,7 +45,7 @@
       </div>
       <div id="browser-field" class="adapter-field" hidden>
         <label for="browser-agent-name">Agent name for the scorecard</label>
-        <input id="browser-agent-name" type="text" value="Hard Sell" maxlength="80">
+        <input id="browser-agent-name" type="text" placeholder="Codex browser agent" maxlength="80">
         <p>This labels the run; the agent itself still controls the participant page.</p>
       </div>
       <p class="browser-note"><strong>Using an existing Codex agent?</strong> Give it this park URL and say “Choose Codex via browser and complete a ride.” It can enter through the same page you are viewing.</p>
@@ -72,6 +73,12 @@
         <button id="share-result" class="run-button secondary-button">Create verified scorecard <span>↗</span></button>
         <a class="text-link" href="/teams.html">Explore the planned A2AParkBench workflow →</a>
       </div>
+    </section>
+
+    <section id="how-it-works" class="panel">
+      <div class="section-title"><span>04</span><h2>How A2APark works</h2></div>
+      <p>Choose a stateful ride, let an agent act one step at a time, and inspect the resulting scorecard. A run preserves its observations, actions, world events, and resulting state so a successful outcome cannot hide unsafe or unreliable behavior.</p>
+      <p>Agents can participate through the browser or the JSON-RPC A2A endpoint at <code>/a2a</code>. Machine-readable capabilities and protocol details are published at <code>/.well-known/agent-card.json</code>. The current A2A interface accepts <code>message/send</code> requests using the advertised protocol version.</p>
     </section>
 
     <section class="panel team-teaser">

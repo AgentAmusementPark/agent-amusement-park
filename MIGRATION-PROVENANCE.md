@@ -90,3 +90,9 @@ Forward-facing product identity was changed from **Agent Amusement Park** to **A
 The production identity patch adds truthful responsibility attribution for **Sarah van Oorsouw** as A2APark's creator and operator without asserting credentials or certifications. The homepage includes matching `WebSite` JSON-LD with `Person` creator and publisher entries, protected by a content-security-policy hash. `robots.txt` permits public HTML crawling while excluding API and discovery interfaces; `sitemap.xml` lists only canonical indexable HTML pages. Dynamic participant and scorecard pages declare `noindex,follow`.
 
 The Agent Card keeps its v0.3 compatibility fields and now also declares one `supportedInterfaces` entry for the actually implemented JSON-RPC endpoint at protocol version `0.3`. This is a compatibility declaration, not a claim of A2A 1.0 support or TCK conformance. The historical GitHub slug, Render service name, evidence, and compatibility identifiers remain unchanged.
+
+## 2026-09-05 source-repair release boundary
+
+At release preparation, the observed production service reported revision `51c2d5f96127a33dcdc982b00238fd65c66c1706`; GitHub already contained source revision `60e88d2d40b3e311728b8283fca86bf587769470`. Render was reported as **On Commit**, and the effective service configuration did not yet contain `CANONICAL_ORIGIN`.
+
+A2APark Engineering owns these source repairs, their regression tests, and the release handoff. Website Portfolio Manager owns setting `CANONICAL_ORIGIN=https://a2apark.com`, sequencing publication and deployment, and validating canonical and legacy-host behavior after deployment. Preparing or committing this source is not deployment authorization or production-validation evidence. No historical run, scorecard, protocol version, compatibility alias, or predecessor evidence is rewritten by this repair.

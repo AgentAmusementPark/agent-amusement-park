@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="A2APark">
+  <rect width="64" height="64" rx="14" fill="#111827"/>
+  <path d="M11 44 23 17h7l12 27h-8l-2-6H20l-2 6Zm12-13h6l-3-8Z" fill="#fbbf24"/>
+  <circle cx="47" cy="21" r="7" fill="#34d399"/>
+  <path d="M44 21h6M47 18v6" stroke="#111827" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
-const { runRide, createBrowserRun, actInBrowserRun } = require('../lib/runner');
+const { runRide, createBrowserRun, actInBrowserRun, externalAdaptersEnabled, validateAgent } = require('../lib/runner');
 const { rides } = require('../lib/rides');
 const { createShareToken, verifyShareToken, scorecardFor } = require('../lib/share');
 const { agentCard, commercialPath, handleA2A } = require('../lib/a2a');
@@ -64,7 +64,16 @@ test('A2A card advertises a callable standards endpoint and park skills', () => 
   assert.equal(card.url, 'https://a2apark.com/a2a');
   assert.equal(card.preferredTransport, 'JSONRPC');
   assert.deepEqual(card.supportedInterfaces, [{ url: 'https://a2apark.com/a2a', protocolBinding: 'JSONRPC', protocolVersion: '0.3' }]);
+  assert.equal(card.documentationUrl, 'https://a2apark.com/#how-it-works');
   assert.deepEqual(card.skills.map(skill => skill.id), ['list-rides', 'start-ride', 'act-in-ride']);
+});
+
+test('invalid and production-disabled agents are rejected before evaluation', async () => {
+  assert.equal(externalAdaptersEnabled({ NODE_ENV: 'production' }), false);
+  assert.equal(externalAdaptersEnabled({ NODE_ENV: 'production', ALLOW_LOCAL_ADAPTERS: 'true' }), true);
+  assert.throws(() => validateAgent({ type: 'external', url: 'http://127.0.0.1:8787/act' }, { NODE_ENV: 'production' }), /disabled/);
+  await assert.rejects(runRide({ rideId: 'bureaucracy', agent: { type: 'builtin', id: 'does-not-exist' } }), /Unknown built-in agent/);
+  await assert.rejects(runRide({ rideId: 'bureaucracy', agent: { type: 'mystery' } }), /Unknown agent type/);
 });
 
 test('A2A registry capability probe receives a valid completed response', () => {
@@ -120,6 +129,13 @@ test('forward-facing pages use A2APark identity and canonical metadata', () => {
   assert.doesNotMatch(teams, /€199|useful-signal guarantee/i);
   const home = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   assert.match(home, /Created and operated by Sarah van Oorsouw/);
+  assert.match(home, /id="how-it-works"/);
+  assert.match(home, /href="\/favicon\.ico"/);
+  assert.match(home, /id="external-option" hidden/);
+  const browserNameInput = home.match(/<input id="browser-agent-name"[^>]*>/)[0];
+  assert.match(browserNameInput, /placeholder="Codex browser agent"/);
+  assert.doesNotMatch(browserNameInput, /value="Hard Sell"/);
+  assert.ok(fs.statSync(path.join(__dirname, '..', 'public', 'favicon.svg')).size > 0);
   assert.match(home, new RegExp(`<script type="application/ld\\+json">${structuredData.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}</script>`));
   const robots = fs.readFileSync(path.join(__dirname, '..', 'public', 'robots.txt'), 'utf8');
   assert.match(robots, /Sitemap: https:\/\/a2apark\.com\/sitemap\.xml/);
@@ -228,11 +244,54 @@ test('A2A discovery and message sending work over HTTP', async () => {
     const sitemapResponse = await fetch(`${origin}/sitemap.xml`);
     assert.equal(sitemapResponse.status, 200);
     assert.match(sitemapResponse.headers.get('content-type'), /^application\/xml/);
+    const faviconResponse = await fetch(`${origin}/favicon.ico`);
+    assert.equal(faviconResponse.status, 200);
+    assert.match(faviconResponse.headers.get('content-type'), /^image\/svg\+xml/);
     const homeResponse = await fetch(`${origin}/`);
     const expectedHash = crypto.createHash('sha256').update(structuredData).digest('base64');
     assert.match(homeResponse.headers.get('content-security-policy'), new RegExp(`sha256-${expectedHash.replace(/[+]/g, '\\+')}`));
   } finally {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+});
+
+test('HTTP rejects unscorable agent configurations and sanitizes missing-run errors', async () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousAllowAdapters = process.env.ALLOW_LOCAL_ADAPTERS;
+  process.env.NODE_ENV = 'production';
+  delete process.env.ALLOW_LOCAL_ADAPTERS;
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    const runFilesBefore = fs.readdirSync(path.join(__dirname, '..', 'runs')).filter(name => name.endsWith('.json')).sort();
+    for (const agent of [
+      { type: 'external', url: 'http://127.0.0.1:8787/act' },
+      { type: 'builtin', id: 'does-not-exist' }
+    ]) {
+      const response = await fetch(`${origin}/api/runs`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rideId: 'bureaucracy', agent })
+      });
+      const result = await response.json();
+      assert.equal(response.status, 400);
+      assert.equal('runId' in result, false);
+      assert.equal('rating' in result, false);
+    }
+    const runFilesAfter = fs.readdirSync(path.join(__dirname, '..', 'runs')).filter(name => name.endsWith('.json')).sort();
+    assert.deepEqual(runFilesAfter, runFilesBefore);
+
+    const missing = await fetch(`${origin}/api/shares`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ runId: 'missing-release-test-run' })
+    });
+    const error = await missing.json();
+    assert.equal(missing.status, 400);
+    assert.deepEqual(error, { error: 'Run not found.' });
+    assert.doesNotMatch(JSON.stringify(error), /[A-Z]:\\|runs[\\/]|ENOENT/i);
+  } finally {
+    await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previousNodeEnv;
+    if (previousAllowAdapters === undefined) delete process.env.ALLOW_LOCAL_ADAPTERS; else process.env.ALLOW_LOCAL_ADAPTERS = previousAllowAdapters;
   }
 });
 

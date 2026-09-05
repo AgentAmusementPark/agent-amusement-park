@@ -21,7 +21,12 @@ async function loadRides() {
 
 async function loadConfig() {
   const response = await fetch('/api/config'); state.config = await response.json();
-  if (!state.config.externalAdaptersEnabled) $('#external-option').hidden = true;
+  const externalOption = $('#external-option');
+  externalOption.hidden = !state.config.externalAdaptersEnabled;
+  if (!state.config.externalAdaptersEnabled && document.querySelector('input[name="agent"]:checked')?.value === 'external') {
+    document.querySelector('input[name="agent"][value="safe"]').checked = true;
+    $('#adapter-field').hidden = true;
+  }
 }
 
 document.querySelectorAll('input[name="agent"]').forEach(input => input.addEventListener('change', () => {
@@ -30,6 +35,10 @@ document.querySelectorAll('input[name="agent"]').forEach(input => input.addEvent
 
 $('#run').addEventListener('click', async () => {
   const button = $('#run'); const selectedAgent = document.querySelector('input[name="agent"]:checked').value;
+  if (selectedAgent === 'external' && !state.config?.externalAdaptersEnabled) {
+    $('#error').textContent = 'External adapters are not available on this deployment.';
+    return;
+  }
   if (selectedAgent === 'browser') {
     button.disabled = true; button.innerHTML = 'Opening the agent entrance… <span>↻</span>'; $('#error').textContent = '';
     try {
