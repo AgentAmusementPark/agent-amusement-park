@@ -17,5 +17,9 @@ services:
         value: www.a2apark.com,agent-amusement-park.onrender.com
       - key: BENCH_ORIGIN
         value: https://bench.a2apark.com
+      - key: COMPLETION_LEDGER_PATH
+        value: /var/data/a2apark/production/completions.jsonl
+      - key: COMPLETION_ENVIRONMENT
+        value: production
       - key: PARK_SHARE_SECRET
         generateValue: true

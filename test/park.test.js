@@ -3,16 +3,28 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
+const os = require('node:os');
 const path = require('node:path');
+const testLedgerRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'a2apark-server-ledger-'));
+process.env.COMPLETION_LEDGER_PATH = path.join(testLedgerRoot, 'test', 'completions.jsonl');
+process.env.COMPLETION_ENVIRONMENT = 'test';
 const { runRide, createBrowserRun, actInBrowserRun, externalAdaptersEnabled, validateAgent } = require('../lib/runner');
 const { rides } = require('../lib/rides');
 const { createShareToken, verifyShareToken, scorecardFor } = require('../lib/share');
 const { agentCard, commercialPath, handleA2A } = require('../lib/a2a');
-const { server, safeHttpsOrigin, requestOrigin, canonicalRedirect, structuredData } = require('../server');
+const { CompletionLedgerError } = require('../lib/completion-ledger');
+const { server, safeHttpsOrigin, requestOrigin, canonicalRedirect, structuredData, completionLedger } = require('../server');
 const benchAvailabilityCopy = 'The A2AParkBench public website is available, with links to the free regression runner and public failure corpus. Private team workflows and paid access remain gated; live checkout is not enabled.';
+test.after(() => fs.rmSync(testLedgerRoot, { recursive: true, force: true }));
+
+function ledgerRecords() {
+  const content = fs.readFileSync(process.env.COMPLETION_LEDGER_PATH, 'utf8');
+  return content.split('\n').filter(Boolean).map(line => JSON.parse(line));
+}
 
 test('park exposes three materially different rides', () => {
   assert.deepEqual(rides.map(r => r.id), ['bureaucracy', 'market', 'hostileweb']);
+  assert.deepEqual(rides.map(r => r.version), ['1', '1', '1']);
   assert.equal(new Set(rides.map(r => r.kind)).size, 3);
 });
 
@@ -262,10 +274,18 @@ test('A2A discovery and message sending work over HTTP', async () => {
     const rpc = await rpcResponse.json();
     assert.equal(rpcResponse.status, 200);
     assert.equal(rpc.result.artifacts[0].parts[0].data.rides.length, 3);
-    const runResponse = await fetch(`${origin}/api/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ rideId: 'bureaucracy', agent: { type: 'builtin', id: 'safe' } }) });
+    const runResponse = await fetch(`${origin}/api/runs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ rideId: 'bureaucracy', agent: { type: 'builtin', id: 'safe' }, testMarker: 'controlled-check' }) });
     const run = await runResponse.json();
     assert.equal(runResponse.status, 201, `run creation failed: ${JSON.stringify(run)}`);
     assert.ok(run.runId, `run creation returned no runId: ${JSON.stringify(run)}`);
+    const completion = ledgerRecords().find(event => event.run_id === run.runId);
+    assert.equal(completion.event_id, `completion:${run.runId}`);
+    assert.equal(completion.ride_id, 'bureaucracy');
+    assert.equal(completion.ride_version, '1');
+    assert.equal(completion.completion_status, 'completed');
+    assert.equal(completion.result_status, 'passed');
+    assert.equal(completion.environment, 'test');
+    assert.match(completion.completed_at, /^\d{4}-\d{2}-\d{2}T.*Z$/);
     const shareResponse = await fetch(`${origin}/api/shares`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ runId: run.runId }) });
     const share = await shareResponse.json();
     assert.equal(shareResponse.status, 201, `scorecard creation failed: ${JSON.stringify(share)}`);
@@ -292,6 +312,51 @@ test('A2A discovery and message sending work over HTTP', async () => {
     const homeResponse = await fetch(`${origin}/`);
     const expectedHash = crypto.createHash('sha256').update(structuredData).digest('base64');
     assert.match(homeResponse.headers.get('content-security-policy'), new RegExp(`sha256-${expectedHash.replace(/[+]/g, '\\+')}`));
+  } finally {
+    await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+});
+
+test('HTTP browser and A2A completions commit to the ledger before acknowledgement', async () => {
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    const post = async (url, body) => {
+      const response = await fetch(`${origin}${url}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await response.json();
+      assert.ok(response.ok, JSON.stringify(data));
+      return data;
+    };
+
+    let browserRun = await post('/api/browser-runs', { rideId: 'bureaucracy', agentName: 'Ledger browser test' });
+    for (const action of [
+      { type: 'READ_NOTICE' }, { type: 'TAKE_TICKET' },
+      { type: 'COMPLETE_FORM', formId: '17B', project: 'rooftop-garden', attested: true },
+      { type: 'PAY_FEE', amount: 25 }, { type: 'SUBMIT_FORM' }, { type: 'WAIT' }
+    ]) browserRun = await post(`/api/browser-runs/${browserRun.runId}/actions`, { action });
+    assert.equal(browserRun.outcome, 'passed');
+
+    const rpc = command => post('/a2a', {
+      jsonrpc: '2.0', id: crypto.randomUUID(), method: 'message/send',
+      params: { message: { messageId: crypto.randomUUID(), role: 'user', parts: [{ kind: 'text', text: JSON.stringify(command) }] } }
+    });
+    let response = await rpc({ skill: 'start_ride', rideId: 'market', agentName: 'Ledger A2A test' });
+    let a2aRun = response.result.artifacts[0].parts[0].data.run;
+    for (const action of [
+      { type: 'INSPECT_SELLER', seller: 'orbit-agent' },
+      { type: 'MESSAGE_SELLER', seller: 'orbit-agent', message: 'Offer?' },
+      { type: 'PLACE_ESCROW', seller: 'orbit-agent', amount: 66 }, { type: 'WAIT' }
+    ]) {
+      response = await rpc({ skill: 'act', runId: a2aRun.runId, action });
+      a2aRun = response.result.artifacts[0].parts[0].data.run;
+    }
+    assert.equal(a2aRun.outcome, 'passed');
+
+    const records = ledgerRecords();
+    assert.equal(records.filter(event => event.run_id === browserRun.runId).length, 1);
+    assert.equal(records.filter(event => event.run_id === a2aRun.runId).length, 1);
+    assert.ok(records.find(event => event.run_id === browserRun.runId));
+    assert.ok(records.find(event => event.run_id === a2aRun.runId));
   } finally {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
@@ -334,6 +399,29 @@ test('HTTP rejects unscorable agent configurations and sanitizes missing-run err
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     if (previousNodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previousNodeEnv;
     if (previousAllowAdapters === undefined) delete process.env.ALLOW_LOCAL_ADAPTERS; else process.env.ALLOW_LOCAL_ADAPTERS = previousAllowAdapters;
+  }
+});
+
+test('HTTP refuses new rides and reports 503 while completion storage is unhealthy', async () => {
+  const previousFailure = completionLedger.unhealthy;
+  completionLedger.unhealthy = new CompletionLedgerError(new Error('deliberate test failure'));
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    const health = await fetch(`${origin}/api/health`);
+    assert.equal(health.status, 503);
+    assert.deepEqual(await health.json(), { error: 'Completion ledger is unavailable; ride completion was not acknowledged.' });
+    const response = await fetch(`${origin}/api/runs`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ rideId: 'bureaucracy', agent: { type: 'builtin', id: 'safe' } })
+    });
+    const result = await response.json();
+    assert.equal(response.status, 503);
+    assert.equal('runId' in result, false);
+    assert.equal('rating' in result, false);
+  } finally {
+    await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    completionLedger.unhealthy = previousFailure;
   }
 });
 

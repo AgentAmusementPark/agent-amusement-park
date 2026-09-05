@@ -5,10 +5,15 @@ const path = require('node:path');
 const { rides } = require('./lib/rides');
 const { runRide, publicRide, createBrowserRun, getBrowserRun, actInBrowserRun, externalAdaptersEnabled } = require('./lib/runner');
 const { createShareToken, verifyShareToken, shareLinksSurviveRestart } = require('./lib/share');
-const { agentCard, handleA2A } = require('./lib/a2a');
+const { agentCard, commandFrom, handleA2A } = require('./lib/a2a');
+const { CompletionLedger } = require('./lib/completion-ledger');
 
 const root = __dirname; const publicDir = path.join(root, 'public'); const runsDir = path.join(root, 'runs');
 fs.mkdirSync(runsDir, { recursive: true });
+const completionLedger = new CompletionLedger({
+  ledgerPath: process.env.COMPLETION_LEDGER_PATH,
+  environment: process.env.COMPLETION_ENVIRONMENT
+});
 
 const structuredData = '{"@context":"https://schema.org","@type":"WebSite","name":"A2APark","url":"https://a2apark.com/","description":"An agent amusement park and behavioral evaluation engine with evidence-backed scorecards.","creator":{"@type":"Person","name":"Sarah van Oorsouw"},"publisher":{"@type":"Person","name":"Sarah van Oorsouw"}}';
 const structuredDataHash = crypto.createHash('sha256').update(structuredData).digest('base64');
@@ -22,14 +27,17 @@ function serveFile(res, file) {
   const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.jsonld': 'application/ld+json; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8' };
   fs.readFile(file, (error, data) => { if (error) return json(res, 404, { error: 'Not found' }); res.writeHead(200, { ...securityHeaders, 'content-type': types[path.extname(file)] || 'application/octet-stream' }); res.end(data); });
 }
-function persistRun(result) {
-  const files = fs.readdirSync(runsDir).filter(name => name.endsWith('.json'));
+function persistRun(result, directory = runsDir) {
+  fs.mkdirSync(directory, { recursive: true });
+  const files = fs.readdirSync(directory).filter(name => name.endsWith('.json'));
   if (files.length >= 500) {
-    const oldest = files.map(name => ({ name, mtime: fs.statSync(path.join(runsDir, name)).mtimeMs })).sort((a, b) => a.mtime - b.mtime).slice(0, files.length - 499);
-    for (const file of oldest) fs.unlinkSync(path.join(runsDir, file.name));
+    const oldest = files.map(name => ({ name, mtime: fs.statSync(path.join(directory, name)).mtimeMs })).sort((a, b) => a.mtime - b.mtime).slice(0, files.length - 499);
+    for (const file of oldest) fs.unlinkSync(path.join(directory, file.name));
   }
-  fs.writeFileSync(path.join(runsDir, `${result.runId}.json`), JSON.stringify(result, null, 2));
+  fs.writeFileSync(path.join(directory, `${result.runId}.json`), JSON.stringify(result, null, 2));
 }
+function needsCompletionRecord(result) { return result && ['passed', 'failed'].includes(result.outcome) && result.agent?.type !== 'external'; }
+async function retainCompletion(result) { if (needsCompletionRecord(result)) await completionLedger.record(result); }
 function readPersistedRun(runId) {
   const safeId = path.basename(String(runId || ''));
   if (!safeId || safeId !== runId) throw new Error('Invalid run ID.');
@@ -80,27 +88,37 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, agentCard(origin));
     }
     if (req.method === 'POST' && url.pathname === '/a2a') {
-      const handled = handleA2A(await readBody(req), {
+      const request = await readBody(req);
+      let command;
+      try { command = commandFrom(request.params?.message); } catch {}
+      if (['start_ride', 'start-ride', 'act', 'act_in_ride', 'act-in-ride'].includes(command?.skill)) completionLedger.assertReady();
+      const handled = handleA2A(request, {
         origin,
         salesEmail: process.env.SALES_EMAIL || '',
         benchOrigin
       });
+      if (handled.completed) await retainCompletion(handled.run);
       if (handled.run) persistRun(handled.run);
       return json(res, handled.response.error ? 400 : 200, handled.response);
     }
     if (req.method === 'GET' && url.pathname === '/api/rides') return json(res, 200, rides.map(publicRide));
     if (req.method === 'POST' && url.pathname === '/api/runs') {
+      completionLedger.assertReady();
       const body = await readBody(req); const result = await runRide(body);
+      await retainCompletion(result);
       persistRun(result);
       return json(res, 201, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/browser-runs') {
+      completionLedger.assertReady();
       const result = createBrowserRun(await readBody(req)); persistRun(result);
       return json(res, 201, { ...result, participantUrl: `${origin}${result.participantUrl}` });
     }
     const browserActionMatch = url.pathname.match(/^\/api\/browser-runs\/([^/]+)\/actions$/);
     if (req.method === 'POST' && browserActionMatch) {
+      completionLedger.assertReady();
       const result = actInBrowserRun(decodeURIComponent(browserActionMatch[1]), (await readBody(req)).action);
+      await retainCompletion(result);
       persistRun(result);
       return json(res, 200, result);
     }
@@ -127,13 +145,16 @@ const server = http.createServer(async (req, res) => {
       benchPaidAccessAvailable: false,
       shareLinksSurviveRestart: shareLinksSurviveRestart()
     });
-    if (req.method === 'GET' && url.pathname === '/api/health') return json(res, 200, { ok: true, rides: rides.length, shareLinksSurviveRestart: shareLinksSurviveRestart() });
+    if (req.method === 'GET' && url.pathname === '/api/health') {
+      completionLedger.assertReady();
+      return json(res, 200, { ok: true, rides: rides.length, completionLedgerReady: true, shareLinksSurviveRestart: shareLinksSurviveRestart() });
+    }
     if (req.method === 'GET' && url.pathname === '/favicon.ico') return serveFile(res, path.join(publicDir, 'favicon.svg'));
     const requested = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
     const file = path.resolve(publicDir, requested);
     if (path.relative(publicDir, file).startsWith('..')) return json(res, 403, { error: 'Forbidden' });
     return serveFile(res, file);
-  } catch (error) { return json(res, 400, { error: error.message }); }
+  } catch (error) { return json(res, error.code === 'COMPLETION_LEDGER_UNAVAILABLE' ? 503 : 400, { error: error.message }); }
 });
 
 if (require.main === module) {
@@ -141,4 +162,4 @@ if (require.main === module) {
   const host = process.env.HOST || '127.0.0.1';
   server.listen(port, host, () => console.log(`A2APark running at http://${host}:${port}`));
 }
-module.exports = { server, safeHttpsOrigin, requestOrigin, canonicalRedirect, structuredData };
+module.exports = { server, safeHttpsOrigin, requestOrigin, canonicalRedirect, structuredData, persistRun, completionLedger };

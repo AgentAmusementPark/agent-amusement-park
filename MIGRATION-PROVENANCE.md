@@ -102,3 +102,9 @@ A2APark Engineering owns these source repairs, their regression tests, and the r
 `BENCH_ORIGIN` identifies only the canonical public A2AParkBench website. `benchPublicWebsiteAvailable` reports whether that navigation origin is configured; `benchAvailable` remains an API-compatibility alias with the same public-navigation-only meaning. `benchPrivateWorkflowsAvailable` and `benchPaidAccessAvailable` remain explicitly false. No field enables an account, entitlement, private workflow, paid CI path, immediate fulfilment, or checkout.
 
 The local `/teams.html` explanation route no longer redirects when `BENCH_ORIGIN` is configured. `/bench` alone is the optional convenience redirect. The permanent legacy ingress still redirects first to the equivalent A2APark path with the complete query string. Website Portfolio Manager owns applying `BENCH_ORIGIN=https://bench.a2apark.com` to the effective production service and validating the resulting convenience redirect after Maestro accepts a published revision.
+
+## Minimum durable completion ledger
+
+Completed built-in, browser, and A2A rides commit a minimal JSONL event before completion is acknowledged. This append-only ledger is separate from the pruned `runs/` cache and contains no visitor identity, IP, account, attribution, payment, or historical backfill. Its environment comes only from `COMPLETION_ENVIRONMENT`; its ride version comes from the executed server-side ride definition.
+
+Production is deliberately fail-closed: `COMPLETION_LEDGER_PATH` must be beneath the verified `/var/data/a2apark` persistent mount, and the process refuses ride starts if configuration, mount detection, recovery, writing, or fsync fails. Development and test use distinct non-production paths. Website Portfolio Manager owns provisioning the approved disk, granting the runtime UID read/write/traverse access, applying the two environment values, and sequencing attachment, publication, deployment, and acceptance.
