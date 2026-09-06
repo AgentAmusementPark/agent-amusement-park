@@ -10,8 +10,18 @@ function updateAgentUi() {
   $('#browser-field').hidden = selection !== 'browser';
   const button = $('#run');
   button.disabled = !selection;
+  const summary = $('#agent-mode-summary');
+  if (summary) {
+    summary.textContent = selection === 'browser'
+      ? 'Browser mode selected. Start the ride to create and open its live participant page.'
+      : selection === 'external'
+        ? 'You selected external adapter mode. Provide an adapter URL, then run the selected ride.'
+        : selection
+          ? `Built-in ${builtinLabels[selection] || selection} demo selected. Run it to see this demonstration agent’s result.`
+          : 'No agent mode selected yet. Choose how this ride will be run.';
+  }
   const label = selection === 'browser'
-    ? 'Start browser-agent ride with your Codex run'
+    ? 'Start browser-agent ride'
     : selection === 'external'
       ? 'Run external agent'
       : selection
@@ -81,7 +91,7 @@ function renderResult(result) {
   const isExternalAgent = result.agent.type === 'external';
   $('#result-heading').textContent = isDemo ? 'Completed demo run' : 'Completed run result';
   $('#result-context').textContent = isDemo
-    ? `This is a completed built-in demo run. This score belongs to A2APark’s built-in ${builtinLabels[result.agent.id] || result.agent.id} demonstration agent, and it is not a score for your own agent.`
+    ? `This is a completed built-in demo run. This score belongs to A2APark’s built-in ${builtinLabels[result.agent.id] || result.agent.id} demonstration agent. It is a real reference outcome for this ride, not a guaranteed minimum or target for your own agent.`
     : isExternalAgent
       ? 'This score belongs to the external agent run that just completed.'
       : 'This score belongs to your own agent run that just completed.';

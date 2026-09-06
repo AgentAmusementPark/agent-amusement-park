@@ -148,13 +148,18 @@ test('forward-facing pages use A2APark identity and canonical metadata', () => {
   const teams = fs.readFileSync(path.join(__dirname, '..', 'public', 'teams.html'), 'utf8');
   assert.match(teams, /Public resources available/);
   assert.doesNotMatch(teams, /€199|useful-signal guarantee/i);
-  for (const page of ['index.html', 'play.html', 'share.html', 'legal.html', 'teams.html']) {
+  for (const page of ['play.html', 'share.html', 'legal.html', 'teams.html']) {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', page), 'utf8');
     assert.match(html, new RegExp(benchAvailabilityCopy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), page);
     assert.match(html, /href="https:\/\/bench\.a2apark\.com\/"[^>]*>Explore A2AParkBench/, page);
     assert.doesNotMatch(html, /A2AParkBench is not yet open|separate Bench service is not yet open/, page);
   }
   const home = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.match(home, /Run AI agents through stateful missions, inspect every action they take, and get an evidence-backed score\./);
+  assert.match(home, /A2APark offers interactive agent rides\. A2AParkBench provides a public failure corpus and regression tooling for repeatable evaluation\./);
+  assert.match(home, /controlled local regression cases, not real-world incident reports/);
+  assert.match(home, /Free runner and corpus artifacts are public\. Private team workflows and paid access remain gated; live checkout is not enabled\./);
+  assert.match(home, /href="https:\/\/bench\.a2apark\.com\/"[^>]*>Explore A2AParkBench/);
   assert.match(home, /Created and operated by Sarah van Oorsouw/);
   assert.match(home, /id="how-it-works"/);
   assert.match(home, /href="\/favicon\.ico"/);
@@ -487,6 +492,11 @@ test('public ride flow makes agent choice, result ownership, and return path exp
   assert.match(styles, /\.agent-row label\[hidden\] \{ display:none; \}/);
   assert.match(home, /id="run" class="run-button" disabled>Choose an agent mode/);
   assert.match(app, /Start browser-agent ride/);
+  assert.match(app, /Built-in.*demo selected/);
+  assert.doesNotMatch(app, /codexRideUrl|initCodexEntry|\/?challenge=1/);
+  assert.match(app, /location\.href = result\.participantUrl/);
+  assert.match(home, /A2APark does not launch or connect Codex automatically/);
+  assert.match(home, /unique live participant page for this run/);
   assert.match(app, /Run demo agent/);
   assert.match(app, /Completed demo run/);
   assert.match(app, /built-in.*demonstration agent/);
@@ -495,6 +505,9 @@ test('public ride flow makes agent choice, result ownership, and return path exp
   assert.match(home, /it does not run the agent again/);
   assert.match(home, /id="take-another-ride"/);
   assert.match(home, /id="test-own-agent"/);
+  assert.match(home, /<span>03<\/span><h2 id="run-inspect-heading">Run &amp; inspect<\/h2>/);
+  assert.match(home, /<span>04<\/span><h2>Review the evidence<\/h2>/);
+  assert.doesNotMatch(home, /<section id="result"[\s\S]*?<span>03<\/span>/);
   assert.match(play, /Completed browser-agent run/);
   assert.match(playScript, /#browser-result'\)\.focus/);
   assert.match(share, /Scorecard from one completed run/);
