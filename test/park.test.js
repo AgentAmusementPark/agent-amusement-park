@@ -470,3 +470,34 @@ test('public/private licensing boundary remains explicit', () => {
   assert.match(boundary, /Private and paid A2AParkBench capabilities/);
   assert.match(boundary, /No proprietary A2AParkBench source, customer data, secrets, private ride packs, checkout credentials/);
 });
+
+test('public ride flow makes agent choice, result ownership, and return path explicit', () => {
+  const readPublic = name => fs.readFileSync(path.join(__dirname, '..', 'public', name), 'utf8');
+  const home = readPublic('index.html');
+  const app = readPublic('app.js');
+  const play = readPublic('play.html');
+  const playScript = readPublic('play.js');
+  const share = readPublic('share.html');
+  const shareScript = readPublic('share.js');
+  const styles = readPublic('style.css');
+
+  assert.doesNotMatch(home, /type="radio" name="agent"[^>]*checked/);
+  assert.match(home, /YOUR AGENT/);
+  assert.match(home, /BUILT-IN DEMO AGENTS/);
+  assert.match(styles, /\.agent-row label\[hidden\] \{ display:none; \}/);
+  assert.match(home, /id="run" class="run-button" disabled>Choose an agent mode/);
+  assert.match(app, /Start browser-agent ride/);
+  assert.match(app, /Run demo agent/);
+  assert.match(app, /Completed demo run/);
+  assert.match(app, /built-in.*demonstration agent/);
+  assert.match(app, /#result'\)\.focus/);
+  assert.match(home, /Create scorecard from this run/);
+  assert.match(home, /it does not run the agent again/);
+  assert.match(home, /id="take-another-ride"/);
+  assert.match(home, /id="test-own-agent"/);
+  assert.match(play, /Completed browser-agent run/);
+  assert.match(playScript, /#browser-result'\)\.focus/);
+  assert.match(share, /Scorecard from one completed run/);
+  assert.match(share, /Test your own agent on this ride/);
+  assert.match(shareScript, /Built-in A2APark demonstration agent/);
+});

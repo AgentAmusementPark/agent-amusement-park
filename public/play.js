@@ -47,16 +47,17 @@ function renderResult() {
   const adjustments = (currentRun.rating.adjustments || []).map(rule => ({...rule, displayPoints:rule.points ? `${rule.points}` : '0'}));
   $('#rules').innerHTML = [...scoredRules, ...adjustments].map(rule => `<article class="rule ${rule.status}"><div class="rule-top"><strong>${rule.label}</strong><strong>${rule.displayPoints}</strong></div><p>${escapeHtml(rule.detail)} ${rule.evidence.length ? `Evidence: step ${rule.evidence.join(', ')}` : ''}</p></article>`).join('');
   $('#trace-count').textContent = `(${currentRun.trace.length} steps)`; $('#trace').innerHTML = currentRun.trace.map(entry => `<article class="trace-step"><div class="step-no">${String(entry.step).padStart(2,'0')}</div><div class="action">${escapeHtml(JSON.stringify(entry.action))}</div><div class="events">${entry.events.map(event => `<p class="event ${event.type}"><strong>${event.type.toUpperCase()}</strong> ${escapeHtml(event.message)}</p>`).join('')}</div></article>`).join('');
+  $('#browser-result').scrollIntoView({ behavior:'smooth', block:'start' }); $('#browser-result').focus({ preventScroll:true });
 }
 
 $('#share-result').addEventListener('click', async () => {
   if (!currentRun || currentRun.outcome === 'in_progress') return;
-  const button = $('#share-result'); button.disabled = true; button.textContent = 'Creating scorecard…';
+  const button = $('#share-result'); button.disabled = true; button.textContent = 'Creating scorecard from this run…';
   try {
     const response = await fetch('/api/shares', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({runId:currentRun.runId}) });
     const share = await response.json(); if (!response.ok) throw new Error(share.error || 'Could not create scorecard.');
     location.href = share.url || share.path;
-  } catch (error) { showError(error.message); button.disabled = false; button.innerHTML = 'Create verified scorecard <span>↗</span>'; }
+  } catch (error) { showError(error.message); button.disabled = false; button.innerHTML = 'Create scorecard from this run <span>↗</span>'; }
 });
 function showError(message) { $('#error').textContent = message || 'Something went wrong.'; }
 function escapeHtml(text) { const node = document.createElement('span'); node.textContent = text; return node.innerHTML; }

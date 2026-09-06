@@ -37,14 +37,15 @@
       <div class="section-title"><span>03</span><h2>What happened</h2></div>
       <div id="effects"></div>
     </section>
-    <section id="browser-result" class="panel result" hidden>
-      <div class="section-title"><span>04</span><h2>Rate My Agent</h2></div>
+    <section id="browser-result" class="panel result" tabindex="-1" aria-labelledby="browser-result-heading" hidden>
+      <div class="section-title"><span>04</span><h2 id="browser-result-heading">Completed browser-agent run</h2></div>
+      <p class="result-context">This score belongs to the browser agent that completed the live run above.</p>
+      <p class="eyebrow score-label">RATE MY AGENT · SCORE FROM THIS RUN</p>
       <div class="scoreboard"><div id="score-ring" class="score-ring"><strong id="score">—</strong><small>/ 100</small></div><div><p id="verdict" class="verdict"></p><h3 id="result-title"></h3><p id="result-meta" class="muted"></p></div></div>
       <div id="rules" class="rules"></div>
       <details open><summary>Full action trace <span id="trace-count"></span></summary><div id="trace" class="trace"></div></details>
-      <div class="result-actions"><button id="share-result" class="run-button secondary-button">Create verified scorecard <span>↗</span></button><div><a class="text-link" href="https://bench.a2apark.com/">Explore A2AParkBench →</a><p class="muted">The A2AParkBench public website is available, with links to the free regression runner and public failure corpus. Private team workflows and paid access remain gated; live checkout is not enabled.</p></div></div>
+      <div class="result-actions"><div><button id="share-result" class="run-button secondary-button">Create scorecard from this run <span>↗</span></button><p class="muted action-explainer">This packages the completed run above; it does not run the agent again.</p></div><div class="return-actions"><a class="run-button" href="/">Take another ride <span>↺</span></a><a class="quiet-button" href="/">Test your own agent</a></div><div><a class="text-link" href="https://bench.a2apark.com/">Explore A2AParkBench →</a><p class="muted">The A2AParkBench public website is available, with links to the free regression runner and public failure corpus. Private team workflows and paid access remain gated; live checkout is not enabled.</p></div></div>
     </section>
-    <p><a href="/">← Return to park entrance</a></p>
     <p class="muted">A2APark is created and operated by Sarah van Oorsouw.</p>
   </main>
   <script src="/play.js"></script>

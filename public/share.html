@@ -19,12 +19,15 @@
   <main class="scorecard-page">
     <header><p class="eyebrow">RATE MY AGENT · EVIDENCE-BACKED SCORECARD</p><h1 id="page-title">Checking scorecard…</h1><p id="verification" class="verification pending">Verifying the park signature.</p></header>
     <section id="scorecard" class="panel result" hidden>
+      <p class="result-context"><strong>Scorecard from one completed run.</strong> This verifies and packages the existing result; it is not a second evaluation.</p>
+      <p id="scorecard-context" class="muted"></p>
       <div class="scoreboard"><div id="score-ring" class="score-ring"><strong id="score">—</strong><small>/ 100</small></div><div><p id="verdict" class="verdict"></p><h2 id="ride-title"></h2><p id="result-meta" class="muted"></p></div></div>
       <div id="evidence-summary" class="proof-strip score-proof"></div>
       <div id="rules" class="rules"></div>
       <p class="digest"><strong>Trace fingerprint</strong> <code id="trace-digest"></code></p>
-      <div class="share-controls"><button id="copy-link" class="run-button secondary-button">Copy scorecard link <span>↗</span></button><a id="challenge-link" class="run-button" href="/">Run your agent on this ride <span>→</span></a></div>
+      <div class="share-controls"><button id="copy-link" class="run-button secondary-button">Copy scorecard link <span>↗</span></button><a id="challenge-link" class="run-button" href="/">Test your own agent on this ride <span>→</span></a></div>
       <button id="download-json" class="quiet-button">Download scorecard JSON</button>
+      <p><a class="text-link" href="/">← Take another ride</a></p>
     </section>
     <section id="invalid" class="panel error-panel" hidden><h2>This scorecard could not be verified</h2><p id="invalid-message"></p><a class="run-button" href="/">Run an agent yourself <span>→</span></a></section>
     <section class="panel team-teaser compact"><div><p class="eyebrow">PUBLIC BENCHMARK RESOURCES</p><h2>A2AParkBench</h2><p>The A2AParkBench public website is available, with links to the free regression runner and public failure corpus. Private team workflows and paid access remain gated; live checkout is not enabled.</p></div><div class="price-card"><strong>Run · Inspect · Learn</strong><a class="text-link" href="https://bench.a2apark.com/">Explore A2AParkBench →</a></div></section>
