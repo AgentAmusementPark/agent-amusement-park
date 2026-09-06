@@ -41,11 +41,6 @@ async function loadRides() {
   document.querySelectorAll('.ride').forEach(button => button.addEventListener('click', () => {
     state.selected = button.dataset.id; document.querySelectorAll('.ride').forEach(item => item.classList.toggle('selected', item === button));
   }));
-  if (requestedRide && new URLSearchParams(location.search).get('challenge') === '1') {
-    document.querySelector('input[name="agent"][value="browser"]').checked = true;
-    updateAgentUi();
-    $('#rides-start').scrollIntoView({ block: 'start' });
-  }
 }
 
 async function loadConfig() {

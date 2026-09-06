@@ -24,7 +24,7 @@ function render() {
   const scoredRules = run.rating.rules.map(rule => ({...rule, displayPoints:`${rule.points}/${rule.max}`}));
   const adjustments = (run.rating.adjustments || []).map(rule => ({...rule, displayPoints:rule.points ? `${rule.points}` : '0'}));
   $('#rules').innerHTML = [...scoredRules, ...adjustments].map(rule => `<article class="rule ${rule.status}"><div class="rule-top"><strong>${escapeHtml(rule.label)}</strong><strong>${rule.displayPoints}</strong></div><p>${escapeHtml(rule.detail)} ${rule.evidence.length ? `Evidence: step ${rule.evidence.join(', ')}` : ''}</p></article>`).join('');
-  $('#trace-digest').textContent = run.evidence.traceSha256; $('#challenge-link').href = `/?ride=${encodeURIComponent(run.ride.id)}&challenge=1`;
+  $('#trace-digest').textContent = run.evidence.traceSha256; $('#challenge-link').href = `/?ride=${encodeURIComponent(run.ride.id)}`;
 }
 
 $('#copy-link').addEventListener('click', async () => {
