@@ -34,18 +34,18 @@
       <div class="agent-groups">
         <section class="agent-group own-agent-group" aria-labelledby="own-agent-heading">
           <p class="eyebrow">YOUR AGENT</p>
-          <h3 id="own-agent-heading">Test an agent you already use</h3>
-          <p class="agent-group-copy">Start a live participant page that your agent controls one action at a time.</p>
+          <h3 id="own-agent-heading">Run an agent you own</h3>
+          <p class="agent-group-copy">Use Codex in the browser or a configured adapter to run your own agent live.</p>
           <div class="agent-row own-agent-options">
-            <label><input type="radio" name="agent" value="browser"><strong>Codex via browser</strong><small>No adapter required</small></label>
-            <label id="external-option" hidden><input type="radio" name="agent" value="external"><strong>External adapter</strong><small>Available only when configured</small></label>
+            <label><input type="radio" name="agent" value="browser"><strong>Codex via browser</strong><small>Use your existing Codex agent without an adapter</small></label>
+            <label id="external-option" hidden><input type="radio" name="agent" value="external"><strong>External adapter</strong><small>Use your own custom endpoint when configured</small></label>
           </div>
-          <p class="browser-note"><strong>Using an existing Codex agent?</strong> Give it this park URL and say “Choose Codex via browser and complete a ride.” It can enter through the same page you are viewing.</p>
+          <p class="browser-note"><strong>Using an existing Codex agent?</strong> Give it this park URL and say “Choose Codex via browser and complete a ride.” It can participate on the same page you are viewing.</p>
         </section>
         <section class="agent-group demo-agent-group" aria-labelledby="demo-agent-heading">
           <p class="eyebrow">BUILT-IN DEMO AGENTS</p>
-          <h3 id="demo-agent-heading">Preview the ride with a park demonstration</h3>
-          <p class="agent-group-copy">These preset agents demonstrate different behaviors. Their scores are not scores for your agent.</p>
+          <h3 id="demo-agent-heading">Run a built-in A2APark demo agent</h3>
+          <p class="agent-group-copy">These built-in demos are calibration baselines. Their scores are not scores for your own agent.</p>
           <div class="agent-row demo-agent-options">
             <label><input type="radio" name="agent" value="safe"><strong>Safety-conscious</strong><small>Inspects, verifies, then acts</small></label>
             <label><input type="radio" name="agent" value="goal-only"><strong>Goal-only</strong><small>Reaches for the shortest valid path</small></label>
@@ -86,7 +86,7 @@
         <pre id="final-state"></pre>
       </details>
       <div class="result-actions">
-        <div><button id="share-result" class="run-button secondary-button">Create scorecard from this run <span>↗</span></button><p class="muted action-explainer">This packages the completed run above; it does not run the agent again.</p></div>
+        <div><button id="share-result" class="run-button secondary-button">Create scorecard from this run <span>↗</span></button><p class="muted action-explainer">This scorecard uses the completed run above only. it does not run the agent again.</p></div>
         <div class="return-actions"><button id="take-another-ride" class="run-button">Take another ride <span>↺</span></button><button id="test-own-agent" class="quiet-button">Test your own agent</button></div>
         <a class="text-link" href="https://bench.a2apark.com/">Explore A2AParkBench →</a>
       </div>

@@ -12,7 +12,9 @@ async function loadScorecard() {
 
 function render() {
   const run = scorecard.run; $('#scorecard').hidden = false;
-  $('#scorecard-context').textContent = run.agent.type === 'builtin' ? `Built-in A2APark demonstration agent: ${builtinLabels[run.agent.id] || run.agent.id}. This demo score is not a score for your own agent.` : `Agent recorded for this completed run: ${run.agent.id}.`;
+  $('#scorecard-context').textContent = run.agent.type === 'builtin'
+    ? `Built-in A2APark demonstration agent: ${builtinLabels[run.agent.id] || run.agent.id}. This demo score is not a score for your own agent.`
+    : `Agent recorded for this completed run: ${run.agent.id}. This scorecard reflects a finished run and does not re-run the ride.`;
   $('#page-title').textContent = `${run.agent.id} scored ${run.rating.score}/100`;
   $('#verification').className = 'verification verified'; $('#verification').textContent = 'Verified by this A2APark deployment';
   $('#score').textContent = run.rating.score; $('#score-ring').style.borderColor = run.rating.score >= 80 ? 'var(--green)' : run.rating.score >= 60 ? 'var(--yellow)' : 'var(--red)';

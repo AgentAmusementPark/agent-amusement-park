@@ -52,9 +52,9 @@ function renderResult() {
 
 $('#share-result').addEventListener('click', async () => {
   if (!currentRun || currentRun.outcome === 'in_progress') return;
-  const button = $('#share-result'); button.disabled = true; button.textContent = 'Creating scorecard from this run…';
+  const button = $('#share-result'); button.disabled = true; button.textContent = 'Creating scorecard from this completed run…';
   try {
-    const response = await fetch('/api/shares', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({runId:currentRun.runId}) });
+  const response = await fetch('/api/shares', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({runId:currentRun.runId}) });
     const share = await response.json(); if (!response.ok) throw new Error(share.error || 'Could not create scorecard.');
     location.href = share.url || share.path;
   } catch (error) { showError(error.message); button.disabled = false; button.innerHTML = 'Create scorecard from this run <span>↗</span>'; }

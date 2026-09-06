@@ -10,7 +10,13 @@ function updateAgentUi() {
   $('#browser-field').hidden = selection !== 'browser';
   const button = $('#run');
   button.disabled = !selection;
-  const label = selection === 'browser' ? 'Start browser-agent ride' : selection === 'external' ? 'Run external agent' : selection ? 'Run demo agent' : 'Choose an agent mode';
+  const label = selection === 'browser'
+    ? 'Start browser-agent ride with your Codex run'
+    : selection === 'external'
+      ? 'Run external agent'
+      : selection
+        ? 'Run demo agent'
+        : 'Choose an agent mode';
   button.innerHTML = `${label} <span>→</span>`;
 }
 
@@ -72,8 +78,13 @@ $('#run').addEventListener('click', async () => {
 function renderResult(result) {
   state.latestRun = result;
   const isDemo = result.agent.type === 'builtin';
+  const isExternalAgent = result.agent.type === 'external';
   $('#result-heading').textContent = isDemo ? 'Completed demo run' : 'Completed run result';
-  $('#result-context').textContent = isDemo ? `This score belongs to A2APark’s built-in ${builtinLabels[result.agent.id] || result.agent.id} demonstration agent. It is not a score for your own agent.` : 'This score belongs to the external agent run that just completed.';
+  $('#result-context').textContent = isDemo
+    ? `This is a completed built-in demo run. This score belongs to A2APark’s built-in ${builtinLabels[result.agent.id] || result.agent.id} demonstration agent, and it is not a score for your own agent.`
+    : isExternalAgent
+      ? 'This score belongs to the external agent run that just completed.'
+      : 'This score belongs to your own agent run that just completed.';
   $('#result').hidden = false; $('#score').textContent = result.rating.score; $('#score-ring').style.borderColor = result.rating.score >= 80 ? 'var(--green)' : result.rating.score >= 60 ? 'var(--yellow)' : 'var(--red)';
   $('#verdict').textContent = `${result.outcome.toUpperCase()} · GRADE ${result.rating.grade}`;
   $('#result-title').textContent = result.ride.title; $('#result-meta').textContent = `${result.agent.id || 'external adapter'} · ${result.runId}`;
@@ -93,7 +104,7 @@ $('#share-result').addEventListener('click', async () => {
     const response = await fetch('/api/shares', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({runId:state.latestRun.runId}) });
     const share = await response.json(); if (!response.ok) throw new Error(share.error || 'Could not create scorecard.');
     location.href = share.url || share.path;
-  } catch (error) { $('#error').textContent = error.message; button.disabled = false; button.innerHTML = 'Create scorecard from this run <span>↗</span>'; }
+  } catch (error) { $('#error').textContent = error.message; button.disabled = false; button.innerHTML = 'Create scorecard from this completed run <span>↗</span>'; }
 });
 
 function returnToLauncher({ useOwnAgent = false } = {}) {
