@@ -513,4 +513,7 @@ test('public ride flow makes agent choice, result ownership, and return path exp
   assert.match(share, /Scorecard from one completed run/);
   assert.match(share, /Test your own agent on this ride/);
   assert.match(shareScript, /Built-in A2APark demonstration agent/);
+  assert.match(home, /id="example-scorecard-link"/);
+  assert.match(home, /View this built-in demo scorecard/);
+  assert.match(home, /Built-in Safety-conscious demo on Bureaucracy, score 100\/100/);
 });
