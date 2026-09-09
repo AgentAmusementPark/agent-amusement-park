@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
+const vm = require('node:vm');
 const os = require('node:os');
 const path = require('node:path');
 const testLedgerRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'a2apark-server-ledger-'));
@@ -459,6 +460,109 @@ test('tampering invalidates a public scorecard', async () => {
   const run = await runRide({ rideId: 'bureaucracy', agent: { type: 'builtin', id: 'safe' } });
   const token = createShareToken(run); const [payload, signature] = token.split('.');
   assert.throws(() => verifyShareToken(`${payload.slice(0, -1)}A.${signature}`), /signature is invalid/);
+});
+
+test('share page re-verifies on same-document hash changes and ignores stale responses', async () => {
+  const validRunOne = await runRide({ rideId: 'market', agent: { type: 'builtin', id: 'safe' } });
+  const validRunTwo = await runRide({ rideId: 'market', agent: { type: 'builtin', id: 'safe' } });
+  const validTokenOne = createShareToken(validRunOne);
+  const validTokenTwo = createShareToken(validRunTwo);
+  const tamperedToken = `${validTokenOne.slice(0, -1)}A`;
+  const scorecardOne = verifyShareToken(validTokenOne);
+  const scorecardTwo = verifyShareToken(validTokenTwo);
+
+  const nodes = {};
+  const idForNode = id => {
+    if (!nodes[id]) {
+      nodes[id] = {
+        hidden: true,
+        textContent: '',
+        className: '',
+        style: {},
+        innerHTML: '',
+        href: '',
+        value: '',
+        addEventListener: () => {},
+        focus: () => {}
+      };
+    }
+    return nodes[id];
+  };
+  const createElement = () => ({ textContent: '', toString() { return ''; } });
+  const callHashchange = [];
+
+  let currentHash = `#${validTokenOne}`;
+  const context = {
+    location: {
+      get hash() { return currentHash; },
+      set hash(value) { currentHash = value || ''; }
+    },
+    document: {
+      createElement: createElement,
+      querySelector: selector => idForNode(selector.replace(/^#/, ''))
+    },
+    window: {},
+    navigator: { clipboard: { writeText: async () => {} } },
+    clearTimeout,
+    setTimeout
+  };
+  context.window.addEventListener = (event, handler) => {
+    if (event === 'hashchange') callHashchange.push(handler);
+  };
+  context.window.__scorecardPageState = null;
+  context.fetch = async (_url, init) => {
+    const { token } = JSON.parse(init.body);
+    if (token === validTokenOne) {
+      return {
+        ok: true,
+        async json() {
+          await new Promise(resolve => setTimeout(resolve, 35));
+          return scorecardOne;
+        }
+      };
+    }
+    if (token === validTokenTwo) {
+      return { ok: true, async json() { return scorecardTwo; } };
+    }
+    return { ok: false, async json() { return { error: 'Scorecard signature is invalid.' }; } };
+  };
+
+  const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'share.js'), 'utf8');
+  vm.createContext(context);
+  vm.runInContext(script, context);
+
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  await wait(5);
+  const titleAfterInitial = idForNode('page-title');
+  assert.equal(titleAfterInitial.textContent, 'Checking scorecard…');
+
+  currentHash = `#${tamperedToken}`;
+  for (const handler of callHashchange) handler();
+  await wait(40);
+  const titleAfterTamper = idForNode('page-title');
+  const invalidMessage = idForNode('invalid-message');
+  assert.equal(titleAfterTamper.textContent, 'Unverified scorecard');
+  assert.equal(idForNode('invalid').hidden, false);
+  assert.match(invalidMessage.textContent, /invalid/i);
+
+  currentHash = `#${validTokenTwo}`;
+  for (const handler of callHashchange) handler();
+  await wait(70);
+  assert.equal(idForNode('score').textContent, scorecardTwo.run.rating.score);
+  assert.equal(idForNode('invalid').hidden, true);
+  assert.equal(idForNode('scorecard').hidden, false);
+
+  currentHash = '';
+  for (const handler of callHashchange) handler();
+  await wait(20);
+  assert.equal(idForNode('page-title').textContent, 'Unverified scorecard');
+  assert.equal(idForNode('invalid').hidden, false);
+  assert.match(idForNode('invalid-message').textContent, /missing/i);
+
+  // Stale tokenOne response must not override the latest tokenThree path.
+  assert.equal(currentHash, '');
+  await wait(40);
+  assert.equal(idForNode('page-title').textContent, 'Unverified scorecard');
 });
 
 test('scorecard evidence counts hazards and execution errors', async () => {
