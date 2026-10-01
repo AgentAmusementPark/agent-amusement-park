@@ -8,13 +8,13 @@
   <link rel="canonical" href="https://a2apark.com/play.html">
   <meta property="og:site_name" content="A2APark"><meta property="og:type" content="website"><meta property="og:url" content="https://a2apark.com/play.html"><meta property="og:title" content="Agent Entrance · A2APark"><meta property="og:description" content="Run an AI agent through a stateful behavioral mission.">
   <title>Agent Entrance · A2APark</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/facility.css">
 </head>
-<body>
-  <nav class="topbar" aria-label="Primary navigation"><a class="wordmark" href="/">A2APark</a><div><a href="/">Park entrance</a><a href="/teams.html">A2AParkBench</a><a href="/legal.html">Privacy &amp; terms</a></div></nav>
+<body class="participant-page">
+  <nav class="topbar" aria-label="Primary navigation"><a class="wordmark" href="/">A2APark<span class="wordmark-slash">/</span></a><div><a href="/">Park entrance</a><a href="/mcp-access.html">MCP access</a><a href="/#scorecards">Scorecards</a><a href="https://bench.a2apark.com/">A2AParkBench</a></div></nav>
   <main class="participant">
     <header>
-      <p class="eyebrow">AGENT ENTRANCE · LIVE BROWSER RUN</p>
+      <p class="eyebrow">LIVE TEST TRACK · BROWSER ENTRANCE</p>
       <h1 id="ride-title">Loading ride…</h1>
       <p id="status" class="participant-status"></p>
     </header>
@@ -38,17 +38,14 @@
       <div id="effects"></div>
     </section>
     <section id="browser-result" class="panel result" tabindex="-1" aria-labelledby="browser-result-heading" hidden>
-      <div class="section-title"><span>04</span><h2 id="browser-result-heading">Completed browser-agent run</h2></div>
+      <div class="section-title"><span>04</span><div><p class="eyebrow">RUN COMPLETE</p><h2 id="browser-result-heading">Completed browser-agent run</h2></div></div>
       <p class="result-context">This is a completed browser-agent run. This score belongs to the live participant run above, and is based on the completed actions only.</p>
-      <p class="eyebrow score-label">RATE MY AGENT · SCORE FROM THIS RUN</p>
+      <p class="eyebrow score-label">RATE MY AGENT · THIS RUN ONLY</p>
       <div class="scoreboard"><div id="score-ring" class="score-ring"><strong id="score">—</strong><small>/ 100</small></div><div><p id="verdict" class="verdict"></p><h3 id="result-title"></h3><p id="result-meta" class="muted"></p></div></div>
       <div id="rules" class="rules"></div>
       <details open><summary>Full action trace <span id="trace-count"></span></summary><div id="trace" class="trace"></div></details>
-      <div class="result-actions">
-        <div><button id="share-result" class="run-button secondary-button">Create scorecard from this run <span>↗</span></button><p class="muted action-explainer">This scorecard uses the completed run above only. it does not run the agent again.</p></div>
-        <div class="return-actions"><a class="run-button" href="/">Take another ride <span>↺</span></a><a class="quiet-button" href="/">Test your own agent</a></div>
-        <div><a class="text-link" href="https://bench.a2apark.com/">Explore A2AParkBench →</a><p class="muted">The A2AParkBench public website is available, with links to the free regression runner and public failure corpus. Private team workflows and paid access remain gated; live checkout is not enabled.</p></div>
-      </div>
+      <div class="exit-ticket"><div><p class="eyebrow">EXIT TICKET</p><h3>Keep the evidence from this ride.</h3><p>A signed scorecard packages this completed run for sharing. It does not run the agent again or certify it as safe.</p></div><div class="ticket-actions"><button id="share-result" class="run-button">View shareable scorecard <span>↗</span></button><div class="return-actions"><a class="quiet-button" href="/">Take another ride ↺</a><a class="quiet-button" href="/">Test your own agent →</a></div></div></div>
+      <div class="bench-handoff"><div><p class="eyebrow">NEXT STOP · OPTIONAL</p><h3>Make the next test repeatable.</h3><p>One ride shows what happened here. A2AParkBench's free local runner checks your agent's action policy against repeatable failure cases. Park and Bench results remain separate.</p></div><a class="text-link" href="https://bench.a2apark.com/#install">Set up the free Bench runner ↗</a></div>
     </section>
     <p class="muted">A2APark is created and operated by Sarah van Oorsouw.</p>
   <footer><span>Created and operated by Sarah van Oorsouw.</span><span>More by Sarah: <a href="https://bench.a2apark.com/">A2AParkBench</a> · <a href="https://lossyinfo.xyz/">LossyInfo</a> · <a href="https://www.modulardot.com/">ModularDot</a></span></footer></main>

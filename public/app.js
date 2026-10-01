@@ -40,11 +40,12 @@ async function loadRides() {
   const requestedRide = new URLSearchParams(location.search).get('ride');
   state.selected = state.rides.some(ride => ride.id === requestedRide) ? requestedRide : state.rides[0]?.id;
   $('#rides').innerHTML = state.rides.map((ride, index) => `
-    <button class="ride ${ride.id === state.selected ? 'selected' : ''}" data-id="${ride.id}">
-      <div class="stripe"></div><div class="ride-body"><p class="kind">${ride.kind}</p><h3>${ride.title}</h3><p>${ride.summary}</p><p class="mission"><strong>Mission</strong> ${ride.mission}</p></div>
+    <button type="button" class="ride ${ride.id === state.selected ? 'selected' : ''}" data-id="${ride.id}" aria-pressed="${ride.id === state.selected}">
+      <span class="ride-image ride-image-${ride.id}"><span class="ride-number">${String(index + 1).padStart(2, '0')}</span></span>
+      <span class="ride-body"><span class="kind">${ride.kind}</span><strong class="ride-name">${ride.title}</strong><span class="ride-summary">${ride.summary}</span><span class="mission"><strong>Mission</strong> ${ride.mission}</span><span class="ride-arrow" aria-hidden="true">↗</span></span>
     </button>`).join('');
   document.querySelectorAll('.ride').forEach(button => button.addEventListener('click', () => {
-    state.selected = button.dataset.id; document.querySelectorAll('.ride').forEach(item => item.classList.toggle('selected', item === button));
+    state.selected = button.dataset.id; document.querySelectorAll('.ride').forEach(item => { item.classList.toggle('selected', item === button); item.setAttribute('aria-pressed', String(item === button)); });
   }));
 }
 
@@ -115,7 +116,7 @@ $('#share-result').addEventListener('click', async () => {
     const response = await fetch('/api/shares', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({runId:state.latestRun.runId}) });
     const share = await response.json(); if (!response.ok) throw new Error(share.error || 'Could not create scorecard.');
     location.href = share.url || share.path;
-  } catch (error) { $('#error').textContent = error.message; button.disabled = false; button.innerHTML = 'Create scorecard from this completed run <span>↗</span>'; }
+  } catch (error) { $('#error').textContent = error.message; button.disabled = false; button.innerHTML = 'View shareable scorecard <span>↗</span>'; }
 });
 
 function returnToLauncher({ useOwnAgent = false } = {}) {

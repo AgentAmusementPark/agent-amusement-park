@@ -61,7 +61,7 @@ $('#share-result').addEventListener('click', async () => {
   const response = await fetch('/api/shares', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({runId:currentRun.runId}) });
     const share = await response.json(); if (!response.ok) throw new Error(share.error || 'Could not create scorecard.');
     location.href = share.url || share.path;
-  } catch (error) { showError(error.message); button.disabled = false; button.innerHTML = 'Create scorecard from this run <span>↗</span>'; }
+  } catch (error) { showError(error.message); button.disabled = false; button.innerHTML = 'View shareable scorecard <span>↗</span>'; }
 });
 function showError(message) { $('#error').textContent = message || 'Something went wrong.'; }
 function escapeHtml(text) { const node = document.createElement('span'); node.textContent = text; return node.innerHTML; }
