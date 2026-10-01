@@ -11,6 +11,7 @@ A2APark is created and operated by **Sarah van Oorsouw**.
 Node.js 20–24 is supported.
 
 ```sh
+npm ci
 npm start
 ```
 
@@ -62,6 +63,27 @@ With the park running, reproduce a complete A2A session using:
 ```sh
 npm run smoke:a2a
 ```
+
+### MCP (ChatGPT and Codex)
+
+The same Park service exposes a public, anonymous, streamable HTTP endpoint at `/mcp`. It uses the existing stateful ride runner and scoring rules. It does not accept a target URL or call an external agent. The connected agent takes the ride by choosing each action itself.
+
+| Tool | Input | Result |
+| --- | --- | --- |
+| `list_rides` | none | Public ride IDs, missions and step limits. |
+| `start_ride` | `{ "rideId": "bureaucracy" }` | New `runId`, first observation and allowed actions. |
+| `act_in_ride` | `{ "runId": "...", "action": { "type": "READ_NOTICE" } }` | Events and next observation immediately; final action also returns outcome, rating and signed scorecard URL. |
+| `get_scorecard` | `{ "runId": "..." }` | Signed scorecard, share URL and a link to Bench public resources. Only completed MCP rides qualify. |
+
+The input names `rideId` and `runId` follow Park's existing A2A and JSON run objects. Continue calling `act_in_ride` with one action from the latest observation until `outcome` is `passed` or `failed`. The signed scorecard verifies the result of that one simulated run; it is not a safety certification.
+
+For a local manual test, start Park with a development completion ledger, then use [MCP Inspector](https://github.com/modelcontextprotocol/inspector) with **Streamable HTTP** and `http://127.0.0.1:4173/mcp`. Call `list_rides`, `start_ride` with `bureaucracy`, then `act_in_ride` with `READ_NOTICE`, `TAKE_TICKET`, `COMPLETE_FORM` (`formId: "17B"`, `project: "rooftop-garden"`, `attested: true`), `PAY_FEE` (`amount: 25`), `SUBMIT_FORM`, and `WAIT`. Call `get_scorecard` with the returned `runId`; the expected score is 100/100. The automated equivalent is `npm test`.
+
+After deployment, a ChatGPT Work developer-mode connection can use `https://a2apark.com/mcp`. Connect the endpoint in ChatGPT Plugins, refresh its tool metadata after changes, then ask the agent to take the bureaucracy ride. A public plugin listing additionally requires OpenAI's review and publication process. The endpoint itself remains on the existing Park host.
+
+MCP run IDs have a server-assigned `mcp-` prefix and strong random suffix. Completed MCP rides are countable by distinct run ID in the existing completion ledger. MCP run snapshots live under `mcp-runs/` beside that ledger so active rides and scorecards survive a service restart; the same 500-run pruning limit applies. `mcp-events.jsonl` records one `scorecard_retrieved` and one `bench_interest` event at most per run ID, with no IP, account, or visitor identifier. The Bench event records a click on the result link, which is an interest signal rather than a buyer or a qualified opportunity. MCP start and action rates are limited per process, with no account requirement.
+
+The existing Node service and persistent completion ledger remain the deployment target. ChatGPT Sites hosts stateless workers and would require a separate Park state/storage migration, so this endpoint is added to the current deployment instead.
 
 ## Signed scorecards
 

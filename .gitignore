@@ -1,2 +1,4 @@
 runs/*.json
 .env
+node_modules/
+npm-debug.log

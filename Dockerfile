@@ -6,6 +6,7 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 COPY --chown=node:node . .
+RUN npm ci --omit=dev
 RUN mkdir -p /app/runs && chown -R node:node /app/runs
 
 USER node

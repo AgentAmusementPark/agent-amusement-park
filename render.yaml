@@ -3,7 +3,7 @@ services:
     name: agent-amusement-park
     runtime: node
     plan: free
-    buildCommand: ""
+    buildCommand: npm ci --omit=dev
     startCommand: npm start
     healthCheckPath: /api/config
     envVars:

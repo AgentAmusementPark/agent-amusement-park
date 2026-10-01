@@ -7,6 +7,8 @@ const { runRide, publicRide, createBrowserRun, getBrowserRun, actInBrowserRun, e
 const { createShareToken, verifyShareToken, shareLinksSurviveRestart } = require('./lib/share');
 const { agentCard, commandFrom, handleA2A } = require('./lib/a2a');
 const { CompletionLedger } = require('./lib/completion-ledger');
+const { handleMcpRequest } = require('./lib/mcp');
+const { recordMcpEvent } = require('./lib/mcp-metrics');
 
 const root = __dirname; const publicDir = path.join(root, 'public'); const runsDir = path.join(root, 'runs');
 fs.mkdirSync(runsDir, { recursive: true });
@@ -14,6 +16,7 @@ const completionLedger = new CompletionLedger({
   ledgerPath: process.env.COMPLETION_LEDGER_PATH,
   environment: process.env.COMPLETION_ENVIRONMENT
 });
+const mcpRunsDir = path.join(path.dirname(completionLedger.ledgerPath), 'mcp-runs');
 
 const structuredData = '{"@context":"https://schema.org","@type":"WebSite","name":"A2APark","url":"https://a2apark.com/","description":"An agent amusement park and behavioral evaluation engine with evidence-backed scorecards.","creator":{"@type":"Person","name":"Sarah van Oorsouw"},"publisher":{"@type":"Person","name":"Sarah van Oorsouw"}}';
 const structuredDataHash = crypto.createHash('sha256').update(structuredData).digest('base64');
@@ -34,15 +37,22 @@ function persistRun(result, directory = runsDir) {
     const oldest = files.map(name => ({ name, mtime: fs.statSync(path.join(directory, name)).mtimeMs })).sort((a, b) => a.mtime - b.mtime).slice(0, files.length - 499);
     for (const file of oldest) fs.unlinkSync(path.join(directory, file.name));
   }
-  fs.writeFileSync(path.join(directory, `${result.runId}.json`), JSON.stringify(result, null, 2));
+  const destination = path.join(directory, `${result.runId}.json`);
+  const temporary = `${destination}.${crypto.randomBytes(6).toString('hex')}.tmp`;
+  try {
+    const fd = fs.openSync(temporary, 'wx', 0o600);
+    try { fs.writeFileSync(fd, JSON.stringify(result, null, 2)); fs.fsyncSync(fd); }
+    finally { fs.closeSync(fd); }
+    fs.renameSync(temporary, destination);
+  } finally { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); }
 }
 function needsCompletionRecord(result) { return result && ['passed', 'failed'].includes(result.outcome) && result.agent?.type !== 'external'; }
 async function retainCompletion(result) { if (needsCompletionRecord(result)) await completionLedger.record(result); }
-function readPersistedRun(runId) {
+function readPersistedRun(runId, directory = runsDir) {
   const safeId = path.basename(String(runId || ''));
   if (!safeId || safeId !== runId) throw new Error('Invalid run ID.');
   try {
-    return JSON.parse(fs.readFileSync(path.join(runsDir, `${safeId}.json`), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(directory, `${safeId}.json`), 'utf8'));
   } catch (error) {
     if (error.code === 'ENOENT') throw new Error('Run not found.');
     throw new Error('Run could not be loaded.');
@@ -84,6 +94,23 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(308, { ...securityHeaders, location: `${benchOrigin}/${url.search}`, 'cache-control': 'public, max-age=3600' }); return res.end();
     }
     if (req.method === 'GET' && url.pathname === '/bench') return serveFile(res, path.join(publicDir, 'teams.html'));
+    if (req.method === 'GET' && url.pathname === '/mcp/bench') {
+      completionLedger.assertReady();
+      const runId = url.searchParams.get('runId') || '';
+      if (!/^mcp-(bureaucracy|market|hostileweb)-\d+-[a-f0-9]{32}$/.test(runId) || !completionLedger.eventIds.has(`completion:${runId}`)) {
+        return json(res, 404, { error: 'Completed MCP run not found.' });
+      }
+      recordMcpEvent(completionLedger, 'bench_interest', runId);
+      const destination = benchOrigin ? `${benchOrigin}/?src=a2apark_mcp` : `${origin}/teams.html?src=a2apark_mcp`;
+      res.writeHead(302, { ...securityHeaders, location: destination, 'cache-control': 'no-store' }); return res.end();
+    }
+    if (url.pathname === '/mcp') {
+      return await handleMcpRequest(req, res, {
+        origin, completionLedger, retainCompletion,
+        persistRun: run => persistRun(run, mcpRunsDir),
+        readPersistedRun: runId => readPersistedRun(runId, mcpRunsDir)
+      });
+    }
     if (req.method === 'GET' && (url.pathname === '/.well-known/agent-card.json' || url.pathname === '/.well-known/agent.json')) {
       return json(res, 200, agentCard(origin));
     }
@@ -111,7 +138,8 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/browser-runs') {
       completionLedger.assertReady();
-      const result = createBrowserRun(await readBody(req)); persistRun(result);
+      const body = await readBody(req);
+      const result = createBrowserRun({ ...body, source: body.source === 'mcp' ? 'direct' : body.source }); persistRun(result);
       return json(res, 201, { ...result, participantUrl: `${origin}${result.participantUrl}` });
     }
     const browserActionMatch = url.pathname.match(/^\/api\/browser-runs\/([^/]+)\/actions$/);
@@ -154,7 +182,10 @@ const server = http.createServer(async (req, res) => {
     const file = path.resolve(publicDir, requested);
     if (path.relative(publicDir, file).startsWith('..')) return json(res, 403, { error: 'Forbidden' });
     return serveFile(res, file);
-  } catch (error) { return json(res, error.code === 'COMPLETION_LEDGER_UNAVAILABLE' ? 503 : 400, { error: error.message }); }
+  } catch (error) {
+    if (res.headersSent) return res.destroy(error);
+    return json(res, error.statusCode || (error.code === 'COMPLETION_LEDGER_UNAVAILABLE' ? 503 : 400), { error: error.message });
+  }
 });
 
 if (require.main === module) {

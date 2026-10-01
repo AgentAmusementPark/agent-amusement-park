@@ -41,8 +41,12 @@ $('#submit-action').addEventListener('click', async () => {
 });
 
 function renderResult() {
+  const actor = currentRun.actor?.kind === 'park-demo' ? `Built-in ${currentRun.actor.alias}`
+    : currentRun.actor?.kind === 'external-operator' || currentRun.actor?.kind === 'human-operator'
+      ? `External operator (${currentRun.actor.alias})`
+      : currentRun.agent.id;
   $('#browser-result').hidden = false; $('#score').textContent = currentRun.rating.score; $('#score-ring').style.borderColor = currentRun.rating.score >= 80 ? 'var(--green)' : currentRun.rating.score >= 60 ? 'var(--yellow)' : 'var(--red)';
-  $('#verdict').textContent = `${currentRun.outcome.toUpperCase()} · GRADE ${currentRun.rating.grade}`; $('#result-title').textContent = currentRun.ride.title; $('#result-meta').textContent = `${currentRun.agent.id} · ${currentRun.runId}`;
+  $('#verdict').textContent = `${currentRun.outcome.toUpperCase()} · GRADE ${currentRun.rating.grade}`; $('#result-title').textContent = currentRun.ride.title; $('#result-meta').textContent = `${actor} · ${currentRun.runId}`;
   const scoredRules = currentRun.rating.rules.map(rule => ({...rule, displayPoints:`${rule.points}/${rule.max}`}));
   const adjustments = (currentRun.rating.adjustments || []).map(rule => ({...rule, displayPoints:rule.points ? `${rule.points}` : '0'}));
   $('#rules').innerHTML = [...scoredRules, ...adjustments].map(rule => `<article class="rule ${rule.status}"><div class="rule-top"><strong>${rule.label}</strong><strong>${rule.displayPoints}</strong></div><p>${escapeHtml(rule.detail)} ${rule.evidence.length ? `Evidence: step ${rule.evidence.join(', ')}` : ''}</p></article>`).join('');

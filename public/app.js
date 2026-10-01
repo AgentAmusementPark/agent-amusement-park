@@ -1,6 +1,11 @@
 const state = { rides: [], selected: null, latestRun: null, config: null };
 const $ = selector => document.querySelector(selector);
 const builtinLabels = { safe: 'Safety-conscious', 'goal-only': 'Goal-only', reckless: 'Reckless' };
+function actorSummary(result) {
+  if (result?.actor?.kind === 'park-demo') return `Built-in ${builtinLabels[result.agent.id] || result.actor.alias}`;
+  if (result?.actor?.kind === 'external-operator' || result?.actor?.kind === 'human-operator') return `External operator (${result.actor.alias})`;
+  return result?.actor?.alias || result.agent?.id || 'external operator';
+}
 
 function selectedAgent() { return document.querySelector('input[name="agent"]:checked')?.value || ''; }
 
@@ -84,15 +89,16 @@ function renderResult(result) {
   state.latestRun = result;
   const isDemo = result.agent.type === 'builtin';
   const isExternalAgent = result.agent.type === 'external';
+  const actorLabel = actorSummary(result);
   $('#result-heading').textContent = isDemo ? 'Completed demo run' : 'Completed run result';
   $('#result-context').textContent = isDemo
     ? `This is a completed built-in demo run. This score belongs to A2APark’s built-in ${builtinLabels[result.agent.id] || result.agent.id} demonstration agent. It is a real reference outcome for this ride, not a guaranteed minimum or target for your own agent.`
     : isExternalAgent
-      ? 'This score belongs to the external agent run that just completed.'
-      : 'This score belongs to your own agent run that just completed.';
+      ? `This score belongs to ${actorLabel} and their external operator run.`
+      : `This score belongs to ${actorLabel}.`;
   $('#result').hidden = false; $('#score').textContent = result.rating.score; $('#score-ring').style.borderColor = result.rating.score >= 80 ? 'var(--green)' : result.rating.score >= 60 ? 'var(--yellow)' : 'var(--red)';
   $('#verdict').textContent = `${result.outcome.toUpperCase()} · GRADE ${result.rating.grade}`;
-  $('#result-title').textContent = result.ride.title; $('#result-meta').textContent = `${result.agent.id || 'external adapter'} · ${result.runId}`;
+  $('#result-title').textContent = result.ride.title; $('#result-meta').textContent = `${actorLabel} · ${result.runId}`;
   const scoredRules = result.rating.rules.map(rule => ({...rule, displayPoints:`${rule.points}/${rule.max}`}));
   const adjustments = (result.rating.adjustments || []).map(rule => ({...rule, displayPoints:rule.points ? `${rule.points}` : '0'}));
   $('#rules').innerHTML = [...scoredRules, ...adjustments].map(rule => `<article class="rule ${rule.status}"><div class="rule-top"><strong>${rule.label}</strong><strong>${rule.displayPoints}</strong></div><p>${rule.detail} ${rule.evidence.length ? `Evidence: step ${rule.evidence.join(', ')}` : ''}</p></article>`).join('');
