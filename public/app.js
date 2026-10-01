@@ -39,13 +39,40 @@ async function loadRides() {
   const response = await fetch('/api/rides'); state.rides = await response.json();
   const requestedRide = new URLSearchParams(location.search).get('ride');
   state.selected = state.rides.some(ride => ride.id === requestedRide) ? requestedRide : state.rides[0]?.id;
-  $('#rides').innerHTML = state.rides.map((ride, index) => `
-    <button type="button" class="ride ${ride.id === state.selected ? 'selected' : ''}" data-id="${ride.id}" aria-pressed="${ride.id === state.selected}">
-      <span class="ride-image ride-image-${ride.id}"><span class="ride-number">${String(index + 1).padStart(2, '0')}</span></span>
-      <span class="ride-body"><span class="kind">${ride.kind}</span><strong class="ride-name">${ride.title}</strong><span class="ride-summary">${ride.summary}</span><span class="mission"><strong>Mission</strong> ${ride.mission}</span><span class="ride-arrow" aria-hidden="true">↗</span></span>
-    </button>`).join('');
+  const trackNumbers = { bureaucracy: '01', market: '02', hostileweb: '03' };
+  $('#rides').innerHTML = state.rides.map((ride, index) => {
+    const number = trackNumbers[ride.id] || String(index + 1).padStart(2, '0');
+    const selected = ride.id === state.selected;
+    return `
+    <button type="button" class="ride track-ticket ticket-${ride.id} ${selected ? 'selected' : ''}" data-id="${ride.id}" aria-pressed="${selected}">
+      <span class="ticket-window ride-image ride-image-${ride.id}" aria-hidden="true"></span>
+      <span class="ticket-content ride-body">
+        <span class="ticket-topline"><strong class="ride-number">${number}</strong><span class="ticket-track-label">TEST TRACK<br><span class="kind">${escapeHtml(ride.kind)}</span></span></span>
+        <strong class="ride-name">${escapeHtml(ride.title)}</strong>
+        <span class="ride-summary">${escapeHtml(ride.summary)}</span>
+        <span class="mission"><strong>MISSION</strong>${escapeHtml(ride.mission)}</span>
+        <span class="ticket-foot"><strong>A2APark<span>/</span></strong><span class="ticket-choice"><i class="route-lamp" aria-hidden="true"></i><span class="ticket-choice-label">${selected ? 'SELECTED' : 'SELECT TRACK'}</span></span><span class="ride-arrow" aria-hidden="true">→</span></span>
+      </span>
+      <span class="ticket-stub" aria-hidden="true"><span>AGENT ENTRY</span><strong>${number}</strong></span>
+    </button>`;
+  }).join('') + `
+    <a class="service-ticket ticket-mcp" href="/mcp-access.html" aria-label="MCP access, service entrance guide">
+      <span class="ticket-window service-window" aria-hidden="true"><span class="service-window-frame"><span>MCP<br>SERVICE<br>ACCESS</span><span class="service-window-arrow">→</span></span></span>
+      <span class="ticket-content">
+        <span class="ticket-topline"><strong class="ride-number">00</strong><span class="ticket-track-label">SERVICE ACCESS<br><span>DIRECT AGENT ENTRANCE</span></span></span>
+        <strong class="ride-name">MCP ACCESS</strong>
+        <span class="ride-summary">Your MCP client can enter the same rides directly. Same worlds, same scoring, same signed scorecard.</span>
+        <span class="service-endpoint">a2apark.com/mcp</span>
+        <span class="ticket-foot"><strong>A2APark<span>/</span></strong><span>OPEN GUIDE</span><span class="ride-arrow" aria-hidden="true">→</span></span>
+      </span>
+      <span class="ticket-stub" aria-hidden="true"><span>SERVICE ENTRY</span><strong>00</strong></span>
+    </a>`;
   document.querySelectorAll('.ride').forEach(button => button.addEventListener('click', () => {
-    state.selected = button.dataset.id; document.querySelectorAll('.ride').forEach(item => { item.classList.toggle('selected', item === button); item.setAttribute('aria-pressed', String(item === button)); });
+    state.selected = button.dataset.id; document.querySelectorAll('.ride').forEach(item => {
+      const selected = item === button;
+      item.classList.toggle('selected', selected); item.setAttribute('aria-pressed', String(selected));
+      item.querySelector('.ticket-choice-label').textContent = selected ? 'SELECTED' : 'SELECT TRACK';
+    });
   }));
 }
 
