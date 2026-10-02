@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.a2apark/a2apark",
+  "title": "A2APark",
+  "description": "Public behavioral test environment for AI agents with stateful rides and signed scorecards.",
+  "websiteUrl": "https://a2apark.com/",
+  "repository": {
+    "url": "https://github.com/AgentAmusementPark/agent-amusement-park",
+    "source": "github"
+  },
+  "version": "0.2.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://a2apark.com/mcp"
+    }
+  ]
+}
