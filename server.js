@@ -21,7 +21,7 @@ const mcpRunsDir = path.join(path.dirname(completionLedger.ledgerPath), 'mcp-run
 const structuredData = '{"@context":"https://schema.org","@type":"WebSite","name":"A2APark","url":"https://a2apark.com/","description":"An agent amusement park and behavioral evaluation engine with evidence-backed scorecards.","creator":{"@type":"Person","name":"Sarah van Oorsouw"},"publisher":{"@type":"Person","name":"Sarah van Oorsouw"}}';
 const structuredDataHash = crypto.createHash('sha256').update(structuredData).digest('base64');
 const securityHeaders = {
-  'content-security-policy': `default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self' 'sha256-${structuredDataHash}'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`,
+  'content-security-policy': `default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self' 'sha256-${structuredDataHash}'; connect-src 'self' https://eu.i.posthog.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`,
   'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY'
 };
 function json(res, status, body) { res.writeHead(status, { ...securityHeaders, 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); }
