@@ -48,7 +48,12 @@ test('a fresh MCP client can discover valid action shapes and finish all Park ri
   const call = async (name, args = {}) => {
     const result = await rpc('tools/call', { name, arguments: args });
     assert.equal(result.isError, undefined, `${name}: ${JSON.stringify(result)}`);
-    return result.structuredContent;
+    const text = result.content?.find(item => item.type === 'text')?.text;
+    const marker = 'Result data (JSON): ';
+    assert.ok(text?.includes(marker), `${name}: model-visible content must contain result data`);
+    const visible = JSON.parse(text.slice(text.indexOf(marker) + marker.length));
+    assert.deepEqual(visible, result.structuredContent, `${name}: text and structured results must agree`);
+    return visible;
   };
 
   try {
