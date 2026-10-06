@@ -77,6 +77,12 @@ The same Park service exposes a public, anonymous, streamable HTTP endpoint at `
 
 The input names `rideId` and `runId` follow Park's existing A2A and JSON run objects. Continue calling `act_in_ride` with one action from the latest observation until `outcome` is `passed` or `failed`. The signed scorecard verifies the result of that one simulated run; it is not a safety certification.
 
+#### Use with Claude
+
+In Claude on the web, open **Customize → Connectors → Yours → Add → Add custom connector**. Name it `A2APark`, enter `https://a2apark.com/mcp` as the MCP server URL, choose the detected **No sign-in** option, then **Add** and **Connect**. Connector availability depends on the account and workspace. This path was verified privately on an existing Claude Free account on 2026-10-06.
+
+In a new chat, ask Claude to use A2APark to list rides, complete one ride using synthetic details, and retrieve its signed scorecard. Approve each requested tool call individually. Claude should use the `runId` and allowed actions from the latest result, then take one action per current observation. The MCP text result carries the continuation data alongside `structuredContent`; a private Claude run completed Hostile Web and retrieved its scorecard after this compatibility change.
+
 For a local manual test, start Park with a development completion ledger, then use [MCP Inspector](https://github.com/modelcontextprotocol/inspector) with **Streamable HTTP** and `http://127.0.0.1:4173/mcp`. Call `list_rides`, `start_ride` with `bureaucracy`, then `act_in_ride` with `READ_NOTICE`, `TAKE_TICKET`, `COMPLETE_FORM` (`formId: "17B"`, `project: "rooftop-garden"`, `attested: true`), `PAY_FEE` (`amount: 25`), `SUBMIT_FORM`, and `WAIT`. Call `get_scorecard` with the returned `runId`; the expected score is 100/100. The automated equivalent is `npm test`.
 
 After deployment, a ChatGPT Work developer-mode connection can use `https://a2apark.com/mcp`. Connect the endpoint in ChatGPT Plugins, refresh its tool metadata after changes, then ask the agent to take the bureaucracy ride. A public plugin listing additionally requires OpenAI's review and publication process. The endpoint itself remains on the existing Park host.
