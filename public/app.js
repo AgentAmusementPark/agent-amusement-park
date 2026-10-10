@@ -9,6 +9,25 @@ function actorSummary(result) {
 
 function selectedAgent() { return document.querySelector('input[name="agent"]:checked')?.value || ''; }
 
+function rideAttribution() {
+  if (location.hostname !== 'a2apark.com') return {};
+  const params = new URLSearchParams(location.search);
+  let referringDomain = null;
+  try {
+    if (document.referrer) {
+      const labels = new URL(document.referrer).hostname.toLowerCase().split('.');
+      const suffix = labels.slice(-2).join('.');
+      const twoPart = ['co.uk', 'org.uk', 'ac.uk', 'com.au', 'net.au', 'org.au', 'co.nz', 'com.br', 'co.jp'].includes(suffix);
+      if (labels.length >= (twoPart ? 3 : 2)) referringDomain = labels.slice(twoPart ? -3 : -2).join('.');
+    }
+  } catch {}
+  let internal = params.has('internal') || params.get('analytics_test') === '1';
+  try { internal ||= localStorage.getItem('a2apark_analytics_internal') === '1'; } catch {}
+  const source = (params.get('utm_source') || params.get('source') || params.get('ref') || '').toLowerCase();
+  const campaignSource = ['github', 'smithery', 'mcp_registry', 'reddit', 'chatgpt', 'claude', 'newsletter'].includes(source) ? source : null;
+  return { referringDomain, campaignSource, internal };
+}
+
 function updateAgentUi() {
   const selection = selectedAgent();
   $('#adapter-field').hidden = selection !== 'external';
@@ -98,7 +117,7 @@ $('#run').addEventListener('click', async () => {
   if (selection === 'browser') {
     button.disabled = true; button.innerHTML = 'Opening the agent entrance… <span>↻</span>'; $('#error').textContent = '';
     try {
-      const response = await fetch('/api/browser-runs', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ rideId:state.selected, agentName:$('#browser-agent-name').value || 'Codex browser agent' }) });
+      const response = await fetch('/api/browser-runs', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ rideId:state.selected, agentName:$('#browser-agent-name').value || 'Codex browser agent', attribution:rideAttribution() }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Could not create browser run');
       location.href = result.participantUrl;
     } catch (error) { $('#error').textContent = error.message; updateAgentUi(); }
@@ -107,7 +126,7 @@ $('#run').addEventListener('click', async () => {
   const agent = selection === 'external' ? { type: 'external', url: $('#adapter-url').value } : { type: 'builtin', id: selection };
   button.disabled = true; button.innerHTML = 'Agent is on the ride… <span>↻</span>'; $('#error').textContent = '';
   try {
-    const response = await fetch('/api/runs', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ rideId:state.selected, agent }) });
+    const response = await fetch('/api/runs', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ rideId:state.selected, agent, attribution:rideAttribution() }) });
     const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Run failed'); renderResult(result);
   } catch (error) { $('#error').textContent = error.message; }
   finally { updateAgentUi(); }

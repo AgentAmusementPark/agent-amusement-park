@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
-    "smoke:a2a": "node examples/a2a-smoke.js"
+    "smoke:a2a": "node examples/a2a-smoke.js",
+    "rides:report": "node tools/ride-report.js"
   },
   "engines": {
     "node": ">=20 <25"
