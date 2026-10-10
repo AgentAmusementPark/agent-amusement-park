@@ -9,6 +9,7 @@ const { agentCard, commandFrom, handleA2A } = require('./lib/a2a');
 const { CompletionLedger } = require('./lib/completion-ledger');
 const { handleMcpRequest } = require('./lib/mcp');
 const { recordMcpEvent } = require('./lib/mcp-metrics');
+const { RideAttribution, startContext } = require('./lib/ride-attribution');
 
 const root = __dirname; const publicDir = path.join(root, 'public'); const runsDir = path.join(root, 'runs');
 fs.mkdirSync(runsDir, { recursive: true });
@@ -17,6 +18,7 @@ const completionLedger = new CompletionLedger({
   environment: process.env.COMPLETION_ENVIRONMENT
 });
 const mcpRunsDir = path.join(path.dirname(completionLedger.ledgerPath), 'mcp-runs');
+const rideAttribution = new RideAttribution(completionLedger.ledgerPath);
 
 const structuredData = '{"@context":"https://schema.org","@type":"WebSite","name":"A2APark","url":"https://a2apark.com/","description":"An agent amusement park and behavioral evaluation engine with evidence-backed scorecards.","creator":{"@type":"Person","name":"Sarah van Oorsouw"},"publisher":{"@type":"Person","name":"Sarah van Oorsouw"}}';
 const structuredDataHash = crypto.createHash('sha256').update(structuredData).digest('base64');
@@ -48,6 +50,10 @@ function persistRun(result, directory = runsDir) {
 }
 function needsCompletionRecord(result) { return result && ['passed', 'failed'].includes(result.outcome) && result.agent?.type !== 'external'; }
 async function retainCompletion(result) { if (needsCompletionRecord(result)) await completionLedger.record(result); }
+function recordRideStart(run, context) {
+  try { rideAttribution.recordStart(run, context); }
+  catch (error) { console.error('Ride attribution write failed:', error.code || error.name); }
+}
 function readPersistedRun(runId, directory = runsDir) {
   const safeId = path.basename(String(runId || ''));
   if (!safeId || safeId !== runId) throw new Error('Invalid run ID.');
@@ -107,6 +113,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/mcp') {
       return await handleMcpRequest(req, res, {
         origin, completionLedger, retainCompletion,
+        recordRideStart: run => recordRideStart(run, startContext(req, 'mcp')),
         persistRun: run => persistRun(run, mcpRunsDir),
         readPersistedRun: runId => readPersistedRun(runId, mcpRunsDir)
       });
@@ -126,12 +133,14 @@ const server = http.createServer(async (req, res) => {
       });
       if (handled.completed) await retainCompletion(handled.run);
       if (handled.run) persistRun(handled.run);
+      if (['start_ride', 'start-ride'].includes(command?.skill) && handled.run) recordRideStart(handled.run, startContext(req, 'a2a'));
       return json(res, handled.response.error ? 400 : 200, handled.response);
     }
     if (req.method === 'GET' && url.pathname === '/api/rides') return json(res, 200, rides.map(publicRide));
     if (req.method === 'POST' && url.pathname === '/api/runs') {
       completionLedger.assertReady();
       const body = await readBody(req); const result = await runRide(body);
+      recordRideStart(result, startContext(req, 'web_demo', body.attribution));
       await retainCompletion(result);
       persistRun(result);
       return json(res, 201, result);
@@ -140,6 +149,7 @@ const server = http.createServer(async (req, res) => {
       completionLedger.assertReady();
       const body = await readBody(req);
       const result = createBrowserRun({ ...body, source: body.source === 'mcp' ? 'direct' : body.source }); persistRun(result);
+      recordRideStart(result, startContext(req, 'web_browser', body.attribution));
       return json(res, 201, { ...result, participantUrl: `${origin}${result.participantUrl}` });
     }
     const browserActionMatch = url.pathname.match(/^\/api\/browser-runs\/([^/]+)\/actions$/);
