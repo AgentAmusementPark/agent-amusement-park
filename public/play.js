@@ -7,7 +7,7 @@ const templates = {
 };
 
 async function loadRun() {
-  if (!runId) return showError('Missing runId in participant URL.');
+  if (!runId) return showError('This page is missing its private run link.');
   const response = await fetch(`/api/browser-runs/${encodeURIComponent(runId)}`); const result = await response.json();
   if (!response.ok) return showError(result.error); currentRun = result; render();
 }
@@ -32,7 +32,7 @@ function render() {
 }
 
 $('#submit-action').addEventListener('click', async () => {
-  $('#error').textContent = ''; let action; try { action = JSON.parse($('#action-json').value); } catch { return showError('Action must be valid JSON.'); }
+  $('#page-error').textContent = ''; let action; try { action = JSON.parse($('#action-json').value); } catch { return showError('Action must be valid JSON.'); }
   $('#submit-action').disabled = true;
   try {
     const response = await fetch(`/api/browser-runs/${encodeURIComponent(runId)}/actions`, {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action})});
@@ -45,8 +45,11 @@ function renderResult() {
     : currentRun.actor?.kind === 'external-operator' || currentRun.actor?.kind === 'human-operator'
       ? `External operator (${currentRun.actor.alias})`
       : currentRun.agent.id;
+  $('#publish-result').hidden = !currentRun.publication?.url;
+  if (currentRun.publication?.url) $('#publish-result').href = currentRun.publication.url;
+  $('#publication-note').textContent = currentRun.publication?.url ? 'Optional. Nothing is posted until you give permission.' : currentRun.publication?.note || '';
   $('#browser-result').hidden = false; $('#score').textContent = currentRun.rating.score; $('#score-ring').style.borderColor = currentRun.rating.score >= 80 ? 'var(--green)' : currentRun.rating.score >= 60 ? 'var(--yellow)' : 'var(--red)';
-  $('#verdict').textContent = `${currentRun.outcome.toUpperCase()} · GRADE ${currentRun.rating.grade}`; $('#result-title').textContent = currentRun.ride.title; $('#result-meta').textContent = `${actor} · ${currentRun.runId}`;
+  $('#verdict').textContent = `${currentRun.outcome.toUpperCase()} · GRADE ${currentRun.rating.grade}`; $('#result-title').textContent = currentRun.ride.title; $('#result-meta').textContent = 'Anonymous agent';
   const scoredRules = currentRun.rating.rules.map(rule => ({...rule, displayPoints:`${rule.points}/${rule.max}`}));
   const adjustments = (currentRun.rating.adjustments || []).map(rule => ({...rule, displayPoints:rule.points ? `${rule.points}` : '0'}));
   $('#rules').innerHTML = [...scoredRules, ...adjustments].map(rule => `<article class="rule ${rule.status}"><div class="rule-top"><strong>${rule.label}</strong><strong>${rule.displayPoints}</strong></div><p>${escapeHtml(rule.detail)} ${rule.evidence.length ? `Evidence: step ${rule.evidence.join(', ')}` : ''}</p></article>`).join('');
@@ -56,13 +59,13 @@ function renderResult() {
 
 $('#share-result').addEventListener('click', async () => {
   if (!currentRun || currentRun.outcome === 'in_progress') return;
-  const button = $('#share-result'); button.disabled = true; button.textContent = 'Creating scorecard from this completed run…';
+  const button = $('#share-result'); button.disabled = true; button.textContent = 'Creating scorecard for this run…';
   try {
   const response = await fetch('/api/shares', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({runId:currentRun.runId}) });
     const share = await response.json(); if (!response.ok) throw new Error(share.error || 'Could not create scorecard.');
     location.href = share.url || share.path;
   } catch (error) { showError(error.message); button.disabled = false; button.innerHTML = 'View shareable scorecard <span>↗</span>'; }
 });
-function showError(message) { $('#error').textContent = message || 'Something went wrong.'; }
+function showError(message) { $('#page-error').textContent = message || 'Something went wrong.'; }
 function escapeHtml(text) { const node = document.createElement('span'); node.textContent = text; return node.innerHTML; }
 loadRun().catch(error => showError(error.message));

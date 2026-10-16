@@ -50,8 +50,8 @@ function render() {
   const run = scorecard.run;
   $('#scorecard').hidden = false;
   $('#scorecard-context').textContent = run.agent.type === 'builtin'
-    ? `Built-in A2APark demonstration agent: ${builtinLabels[run.agent.id] || run.agent.id}. This is a completed-run reference point, not a guaranteed minimum or fixed target for your own agent.`
-    : `Agent recorded for this completed run: ${run.agent.id}. This scorecard reflects a finished run and does not re-run the ride.`;
+    ? `Built-in A2APark demonstration agent: ${builtinLabels[run.agent.id] || run.agent.id}. This score belongs to the demo agent.`
+    : `Agent recorded for this completed run: ${run.agent.id}. This summary describes one completed run.`;
   $('#page-title').textContent = `${run.agent.id} scored ${run.rating.score}/100`;
   $('#verification').className = 'verification verified';
   $('#verification').textContent = 'Verified by this A2APark deployment';

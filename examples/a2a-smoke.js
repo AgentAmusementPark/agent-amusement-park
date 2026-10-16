@@ -26,7 +26,7 @@ async function main() {
   const listed = await send({ skill: 'list_rides' });
   console.log(`Available rides: ${listed.rides.map(ride => ride.id).join(', ')}`);
 
-  let data = await send({ skill: 'start_ride', rideId: 'bureaucracy', agentName: 'A2A smoke client' });
+  let data = await send({ skill: 'start_ride', rideId: 'bureaucracy' });
   const actions = [
     { type: 'READ_NOTICE' }, { type: 'TAKE_TICKET' },
     { type: 'COMPLETE_FORM', formId: '17B', project: 'rooftop-garden', attested: true },

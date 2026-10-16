@@ -10,6 +10,7 @@ const { CompletionLedger } = require('./lib/completion-ledger');
 const { handleMcpRequest } = require('./lib/mcp');
 const { recordMcpEvent } = require('./lib/mcp-metrics');
 const { RideAttribution, startContext } = require('./lib/ride-attribution');
+const { PublicRuns } = require('./lib/public-runs');
 
 const root = __dirname; const publicDir = path.join(root, 'public'); const runsDir = path.join(root, 'runs');
 fs.mkdirSync(runsDir, { recursive: true });
@@ -19,8 +20,19 @@ const completionLedger = new CompletionLedger({
 });
 const mcpRunsDir = path.join(path.dirname(completionLedger.ledgerPath), 'mcp-runs');
 const rideAttribution = new RideAttribution(completionLedger.ledgerPath);
+const publicRuns = new PublicRuns(completionLedger);
 
-const structuredData = '{"@context":"https://schema.org","@type":"WebSite","name":"A2APark","url":"https://a2apark.com/","description":"An agent amusement park and behavioral evaluation engine with evidence-backed scorecards.","creator":{"@type":"Person","name":"Sarah van Oorsouw"},"publisher":{"@type":"Person","name":"Sarah van Oorsouw"}}';
+function publicationFor(run, origin) {
+  try { return publicRuns.offer(run, origin); }
+  catch (error) {
+    console.error('Public result preparation failed:', error.code || error.name);
+    return { unavailable: true, note: 'Publishing is temporarily unavailable. Your run result is still saved.' };
+  }
+}
+
+function withPublication(run, origin) { return { ...run, publication: publicationFor(run, origin) }; }
+
+const structuredData = '{"@context":"https://schema.org","@type":"WebSite","name":"A2APark","url":"https://a2apark.com/","description":"An agent-testing environment with stateful tracks and evidence-backed scorecards.","creator":{"@type":"Person","name":"Sarah van Oorsouw"},"publisher":{"@type":"Person","name":"Sarah van Oorsouw"}}';
 const structuredDataHash = crypto.createHash('sha256').update(structuredData).digest('base64');
 const securityHeaders = {
   'content-security-policy': `default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self' 'sha256-${structuredDataHash}'; connect-src 'self' https://eu.i.posthog.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`,
@@ -96,6 +108,15 @@ const server = http.createServer(async (req, res) => {
     const origin = requestOrigin(req);
     const benchOrigin = safeHttpsOrigin(process.env.BENCH_ORIGIN || '');
     const benchPublicWebsiteAvailable = Boolean(benchOrigin);
+    if (req.method === 'GET' && url.pathname === '/api/public-runs') {
+      return json(res, 200, publicRuns.list({ id: url.searchParams.get('id'), cursor: url.searchParams.get('cursor') }));
+    }
+    if (req.method === 'POST' && ['/api/publications/status', '/api/publications/consent'].includes(url.pathname)) {
+      if (!String(req.headers['content-type'] || '').startsWith('application/json')) return json(res, 415, { error: 'Use application/json.' });
+      const body = await readBody(req);
+      if (url.pathname.endsWith('/consent') && typeof body.publish !== 'boolean') return json(res, 400, { error: 'Explicit publication permission is required.' });
+      return json(res, 200, publicRuns.manage(body.token, url.pathname.endsWith('/consent') ? body.publish : undefined));
+    }
     if (req.method === 'GET' && url.pathname === '/bench' && benchPublicWebsiteAvailable) {
       res.writeHead(308, { ...securityHeaders, location: `${benchOrigin}/${url.search}`, 'cache-control': 'public, max-age=3600' }); return res.end();
     }
@@ -112,7 +133,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/mcp') {
       return await handleMcpRequest(req, res, {
-        origin, completionLedger, retainCompletion,
+        origin, completionLedger, retainCompletion, publicationFor,
         recordRideStart: run => recordRideStart(run, startContext(req, 'mcp')),
         persistRun: run => persistRun(run, mcpRunsDir),
         readPersistedRun: runId => readPersistedRun(runId, mcpRunsDir)
@@ -133,6 +154,10 @@ const server = http.createServer(async (req, res) => {
       });
       if (handled.completed) await retainCompletion(handled.run);
       if (handled.run) persistRun(handled.run);
+      if (handled.completed) {
+        handled.run.publication = publicationFor(handled.run, origin);
+        handled.response.result.artifacts[0].parts[0].data.instruction += ' Give the private publication link to the person who requested this run so they can choose whether to publish an anonymous summary. Do not give consent for them.';
+      }
       if (['start_ride', 'start-ride'].includes(command?.skill) && handled.run) recordRideStart(handled.run, startContext(req, 'a2a'));
       return json(res, handled.response.error ? 400 : 200, handled.response);
     }
@@ -143,12 +168,12 @@ const server = http.createServer(async (req, res) => {
       recordRideStart(result, startContext(req, 'web_demo', body.attribution));
       await retainCompletion(result);
       persistRun(result);
-      return json(res, 201, result);
+      return json(res, 201, withPublication(result, origin));
     }
     if (req.method === 'POST' && url.pathname === '/api/browser-runs') {
       completionLedger.assertReady();
       const body = await readBody(req);
-      const result = createBrowserRun({ ...body, source: body.source === 'mcp' ? 'direct' : body.source }); persistRun(result);
+      const result = createBrowserRun({ ...body, source: 'direct' }); persistRun(result);
       recordRideStart(result, startContext(req, 'web_browser', body.attribution));
       return json(res, 201, { ...result, participantUrl: `${origin}${result.participantUrl}` });
     }
@@ -158,10 +183,10 @@ const server = http.createServer(async (req, res) => {
       const result = actInBrowserRun(decodeURIComponent(browserActionMatch[1]), (await readBody(req)).action);
       await retainCompletion(result);
       persistRun(result);
-      return json(res, 200, result);
+      return json(res, 200, withPublication(result, origin));
     }
     const browserRunMatch = url.pathname.match(/^\/api\/browser-runs\/([^/]+)$/);
-    if (req.method === 'GET' && browserRunMatch) return json(res, 200, getBrowserRun(decodeURIComponent(browserRunMatch[1])));
+    if (req.method === 'GET' && browserRunMatch) return json(res, 200, withPublication(getBrowserRun(decodeURIComponent(browserRunMatch[1])), origin));
     if (req.method === 'GET' && url.pathname.startsWith('/api/runs/')) {
       const id = path.basename(url.pathname); return serveFile(res, path.join(runsDir, `${id}.json`));
     }
@@ -194,6 +219,7 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, file);
   } catch (error) {
     if (res.headersSent) return res.destroy(error);
+    if (url.pathname.startsWith('/api/public') && !error.statusCode && error.code) return json(res, 503, { error: 'Public results are temporarily unavailable. Please try again later.' });
     return json(res, error.statusCode || (error.code === 'COMPLETION_LEDGER_UNAVAILABLE' ? 503 : 400), { error: error.message });
   }
 });

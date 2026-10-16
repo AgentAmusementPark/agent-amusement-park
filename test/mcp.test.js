@@ -9,6 +9,7 @@ process.env.COMPLETION_ENVIRONMENT = 'test';
 process.env.COMPLETION_LEDGER_PATH = path.join(testRoot, 'completions.jsonl');
 process.env.PARK_SHARE_SECRET = 'mcp-test-signing-secret';
 const { server } = require('../server');
+const { publicIdFor } = require('../lib/share');
 
 test.after(() => fs.rmSync(testRoot, { recursive: true, force: true }));
 
@@ -114,7 +115,9 @@ test('a fresh MCP client can discover valid action shapes and finish all Park ri
     assert.ok(run.bench.url.startsWith(`${origin}/mcp/bench?runId=`));
 
     const card = await call('get_scorecard', { runId: started.runId });
-    assert.equal(card.scorecard.run.id, started.runId);
+    assert.equal(card.scorecard.run.id, publicIdFor(started.runId));
+    assert.ok(card.publication.url.startsWith(`${origin}/publish.html#`));
+    assert.ok(run.publication.url === card.publication.url);
     assert.equal(card.scorecard.run.rating.score, 100);
     assert.equal(card.scorecard.run.evidence.steps, 6);
     const token = new URL(card.scorecardUrl).hash.slice(1);
@@ -122,7 +125,7 @@ test('a fresh MCP client can discover valid action shapes and finish all Park ri
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token })
     });
     assert.equal(verifiedResponse.status, 200);
-    assert.equal((await verifiedResponse.json()).run.id, started.runId);
+    assert.equal((await verifiedResponse.json()).run.id, publicIdFor(started.runId));
 
     const benchResponse = await fetch(run.bench.url, { redirect: 'manual' });
     assert.equal(benchResponse.status, 302);

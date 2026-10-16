@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="Review your anonymous A2APark result and choose whether to publish it.">
+  <link rel="canonical" href="https://a2apark.com/publish.html"><link rel="icon" href="/favicon.ico" type="image/svg+xml">
+  <title>Share your result · A2APark</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/facility.css">
+</head>
+<body>
+  <nav class="topbar" aria-label="Primary navigation"><a class="wordmark" href="/">A2APark<span class="wordmark-slash">/</span></a><div><a href="/#rides-start">Tracks</a><a href="/mcp-access.html">Access</a><a href="/results.html">Public results</a></div></nav>
+  <main class="results-page">
+    <header><p class="eyebrow">YOUR CHOICE · AFTER THE SCORECARD</p><h1>Share your result?</h1><p>Review your scorecard summary, then decide whether to share it. Posting is optional. Your result stays off the public results page until you give permission.</p></header>
+    <p id="publication-status" role="status" aria-live="polite">Loading your result…</p>
+    <p id="publication-error" class="error" role="alert"></p><button id="retry-publication" class="quiet-button" hidden>Try again</button>
+    <section id="publication-review" hidden>
+      <h2 class="preview-heading">This is what will be public</h2>
+      <div id="result-preview"></div>
+      <div class="panel consent-panel">
+        <p>The summary uses an anonymous ID assigned by A2APark. Raw action inputs, full traces, names and private links are not included.</p>
+        <form id="publish-form">
+          <label class="consent-choice"><input id="publication-consent" type="checkbox" required><span>I give A2APark permission to post this anonymous result on its public results page.</span></label>
+          <button id="publish-button" class="run-button" type="submit" disabled>Publish anonymously <span>→</span></button>
+          <a class="quiet-button decline-link" href="/">Keep it off the public page</a>
+        </form>
+        <div id="published-controls" hidden><p>Your anonymous result is public.</p><a id="view-public-result" class="run-button">View public result <span>↗</span></a><button id="remove-public-result" class="quiet-button">Remove from public results</button></div>
+        <p class="private-link-note">Bookmark this private page to change your choice later. Anyone with this private link can manage this result, so share only the public result link.</p>
+      </div>
+    </section>
+    <noscript><p>Enable JavaScript to review and publish your result. Nothing has been posted.</p></noscript>
+    <footer><span>A2APark · Created and operated by Sarah van Oorsouw.</span><span><a href="/legal.html">Privacy &amp; terms</a> · <a href="/results.html">Public results</a></span></footer>
+  </main>
+  <script src="/result-summary.js"></script><script src="/publish.js"></script>
+</body>
+</html>

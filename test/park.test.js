@@ -65,7 +65,7 @@ test('browser participant mode preserves the same structured trace and scoring',
     { type: 'PAY_FEE', amount: 25 }, { type: 'SUBMIT_FORM' }, { type: 'WAIT' }
   ];
   for (const action of actions) run = actInBrowserRun(run.runId, action);
-  assert.equal(run.agent.id, 'Hard Sell'); assert.equal(run.outcome, 'passed'); assert.equal(run.rating.score, 100);
+  assert.equal(run.agent.id, 'Anonymous agent'); assert.equal(run.outcome, 'passed'); assert.equal(run.rating.score, 100);
   assert.equal(run.acquisitionSource, 'test_source');
   assert.equal(run.trace.length, actions.length); assert.deepEqual(run.trace[2].action, actions[2]);
   assert.ok(run.trace.every(step => step.observation && step.stateAfter && step.events));
@@ -80,7 +80,7 @@ test('A2A card advertises a callable standards endpoint and park skills', () => 
   assert.equal(card.url, 'https://a2apark.com/a2a');
   assert.equal(card.preferredTransport, 'JSONRPC');
   assert.deepEqual(card.supportedInterfaces, [{ url: 'https://a2apark.com/a2a', protocolBinding: 'JSONRPC', protocolVersion: '0.3' }]);
-  assert.equal(card.documentationUrl, 'https://a2apark.com/#how-it-works');
+  assert.equal(card.documentationUrl, 'https://a2apark.com/#rides-start');
   assert.deepEqual(card.skills.map(skill => skill.id), ['list-rides', 'start-ride', 'act-in-ride']);
 });
 
@@ -98,7 +98,7 @@ test('A2A registry capability probe receives a valid completed response', () => 
     params: { message: { messageId: 'registry-probe-message', role: 'user', parts: [{ text: 'Hello, what can you do?' }] } }
   }).response;
   assert.equal(response.result.status.state, 'completed');
-  assert.match(response.result.artifacts[0].parts[0].data.message, /behavioral evaluation rides/i);
+  assert.match(response.result.artifacts[0].parts[0].data.message, /behavioral test tracks/i);
 });
 
 test('A2A responses expose a non-payable commercial path only when contact is configured', () => {
@@ -156,14 +156,14 @@ test('public pages expose one Park journey and current Bench boundary', () => {
   assert.match(home, /id="rides-start"/);
   assert.match(home, /id="scorecards"/);
   assert.match(home, /href="\/mcp-access\.html"/);
-  assert.match(home, /https:\/\/a2apark\.com\/mcp/);
+  assert.match(guide, /https:\/\/a2apark\.com\/mcp/);
   assert.match(home, /Built-in Safety-conscious demo on Bureaucracy, score 100\/100/);
   assert.match(home, /Created and operated by Sarah van Oorsouw/);
   assert.ok(home.includes(`<script type="application/ld+json">${structuredData}</script>`));
   assert.match(guide, /list_rides[\s\S]*start_ride[\s\S]*act_in_ride[\s\S]*get_scorecard/);
   assert.match(guide, /The endpoint does not accept a target website/);
   assert.match(share, /Scorecard from one completed run/);
-  assert.match(share, /Bench does not import or claim this scorecard/);
+  assert.doesNotMatch(share, /NEXT STOP · OPTIONAL/);
   assert.match(teams, /Team feed and its checkout handled on Bench, subject to availability/);
   assert.match(readPublic('legal.html'), /Bench separately lists a paid Team feed/);
   assert.match(readPublic('sitemap.xml'), /https:\/\/a2apark\.com\/mcp-access\.html/);
@@ -350,6 +350,10 @@ test('HTTP browser and A2A completions commit to the ledger before acknowledgeme
       a2aRun = response.result.artifacts[0].parts[0].data.run;
     }
     assert.equal(a2aRun.outcome, 'passed');
+    assert.ok(a2aRun.publication.url.startsWith(`${origin}/publish.html#`));
+    const publicationStatus = await post('/api/publications/status', { token: new URL(a2aRun.publication.url).hash.slice(1) });
+    assert.equal(publicationStatus.published, false);
+    assert.equal(publicationStatus.summary.mode, 'a2a');
 
     const records = ledgerRecords();
     assert.equal(records.filter(event => event.run_id === browserRun.runId).length, 1);
@@ -460,7 +464,7 @@ test('share page re-verifies on same-document hash changes and ignores stale res
   const validRunTwo = await runRide({ rideId: 'market', agent: { type: 'builtin', id: 'safe' } });
   const validTokenOne = createShareToken(validRunOne);
   const validTokenTwo = createShareToken(validRunTwo);
-  const tamperedToken = `${validTokenOne.slice(0, -1)}A`;
+  const tamperedToken = `${validTokenOne.slice(0, -1)}${validTokenOne.endsWith('A') ? 'B' : 'A'}`;
   const scorecardOne = verifyShareToken(validTokenOne);
   const scorecardTwo = verifyShareToken(validTokenTwo);
 
@@ -573,7 +577,7 @@ test('public/private licensing boundary remains explicit', () => {
   assert.match(boundary, /No proprietary A2AParkBench source, customer data, secrets, private ride packs, checkout credentials/);
 });
 
-test('web completion and scorecard preserve evidence and offer a restrained Bench continuation', () => {
+test('web completion preserves evidence and offers optional anonymous publication', () => {
   const readPublic = name => fs.readFileSync(path.join(__dirname, '..', 'public', name), 'utf8');
   const home = readPublic('index.html');
   const app = readPublic('app.js');
@@ -582,20 +586,20 @@ test('web completion and scorecard preserve evidence and offer a restrained Benc
   const share = readPublic('share.html');
   const shareScript = readPublic('share.js');
   assert.doesNotMatch(home, /type="radio" name="agent"[^>]*checked/);
-  assert.match(home, /id="run" class="run-button" disabled>Choose an agent mode/);
-  assert.match(home, /A2APark does not launch or connect Codex automatically/);
+  assert.match(home, /id="run" class="run-button" disabled>Choose access or a demo/);
+  assert.match(home, /A2APark does not launch or connect your agent automatically/);
   assert.match(app, /location\.href = result\.participantUrl/);
-  assert.match(app, /Completed demo run/);
+  assert.match(app, /Demo scorecard/);
   assert.match(home, /id="share-result"[^>]*>View shareable scorecard/);
   assert.match(play, /id="share-result"[^>]*>View shareable scorecard/);
   assert.match(home, /id="take-another-ride"/);
   assert.match(home, /id="test-own-agent"/);
   assert.match(playScript, /#browser-result'\)\.focus/);
-  assert.match(share, /Test your own agent on this ride/);
+  assert.match(share, /Test your own agent on this track/);
   assert.match(shareScript, /Built-in A2APark demonstration agent/);
-  for (const page of [home, play, share]) {
-    assert.match(page, /https:\/\/bench\.a2apark\.com\/#install/);
-    assert.match(page, /NEXT STOP · OPTIONAL/);
+  for (const page of [home, play]) {
+    assert.match(page, /id="publish-result"[^>]*hidden>Review anonymous summary/);
+    assert.doesNotMatch(page, /agent-name|operator-alias|NEXT STOP · OPTIONAL/);
   }
   const exampleMatch = home.match(/id="example-scorecard-link"[^>]*href="([^"]+)"/);
   assert.ok(exampleMatch, 'missing example scorecard link');
