@@ -103,3 +103,44 @@ footer{font:10px/1.6 var(--mono);color:#a6b3a7;border-top:1px solid var(--line);
 @media(max-width:800px){.home-hero{grid-template-columns:1fr;gap:30px;padding:38px 0}.instrument-panel{display:none}.entrance-grid,.result-next,.guide-grid{grid-template-columns:1fr}.ride-grid{grid-template-columns:1fr}.ride-name,.ride-summary{min-height:0}.scenario-top{margin-bottom:14px}.ride.scenario-panel{padding:20px}.scenario-access{margin-bottom:10px}.scenario-behavior{margin-bottom:12px}.access-facts{padding-top:12px}.protocol-access{padding:20px}.demo-agent-options{grid-template-columns:repeat(3,minmax(0,1fr))}.tool-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.guide-grid{gap:20px}.scorecard-visual{max-width:none}.bench-handoff{align-items:flex-start;flex-direction:column;gap:15px}.rules{grid-template-columns:1fr}}
 @media(max-width:600px){main,footer,header{width:calc(100% - 36px)}.topbar{padding:12px 18px;display:block}.topbar>div{gap:4px 18px;margin-top:8px}.topbar>div a{font-size:10px;min-height:36px}.wordmark{font-size:25px}.home-hero h1{font-size:62px}.home-hero .eyebrow{font-size:9px}.hero-summary{font-size:15px}.hero-actions{gap:14px}.facility-strip{grid-template-columns:1fr 1fr;gap:15px 12px}.facility-strip li{font-size:10px}.panel{padding:18px}.launcher{padding:0}.section-title>span{width:33px;height:33px;font-size:11px}.section-title{gap:12px}.section-title .eyebrow{font-size:9px}.section-title h2{font-size:25px}.demo-agent-options{grid-template-columns:1fr}.scoreboard{grid-template-columns:80px minmax(0,1fr);gap:15px;padding:15px}.score-ring{width:78px;height:86px}.score-ring strong{font-size:30px}.scoreboard h2,.scoreboard h3{font-size:21px}.rule-top{gap:10px}.trace-step{grid-template-columns:30px minmax(0,1fr)}.events{grid-column:2;border-top:1px solid var(--line)}.action{border-right:0}.return-actions,.share-controls,.public-results{grid-template-columns:1fr}.return-actions{gap:0}.endpoint-box{align-items:stretch;flex-direction:column}.tool-steps{grid-template-columns:1fr}.mcp-header{padding-top:35px}.public-result-facts{gap:8px}.public-result-facts dt{font-size:10px}.public-score strong{font-size:40px}.consent-choice{padding:13px;font-size:14px}.results-page header{padding-top:35px}.comparison-grid,.founding-offer{grid-template-columns:1fr}.comparison-grid article+article{border-left:0;border-top:1px solid var(--line)}.commercial-header h1{font-size:36px}footer{display:flex;flex-direction:column;gap:15px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
+
+/* Focal typography: warmer text with a barely visible cool rim. */
+@font-face {
+  font-family: "Chakra Petch";
+  src: url("/fonts/chakra-petch-latin-600.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+:root {
+  --instrument-type: "Chakra Petch", "Arial", Helvetica, sans-serif;
+  --focal-text: #f0dfd2;
+  --focal-depth: 0 0 1px rgb(116 184 174 / 22%), 0 1px 9px rgb(80 158 150 / 12%);
+}
+.home-hero h1, .home-hero .pitch, .section-title h2, main > header h1 {
+  color: var(--focal-text);
+  text-shadow: var(--focal-depth);
+}
+.home-hero h1 span { color: var(--yellow); text-shadow: none; }
+.run-button:not(.secondary-button) {
+  background: #d6b783;
+  border-color: #dfc397;
+  box-shadow: inset 0 1px 0 rgb(255 238 211 / 14%);
+}
+.run-button:not(.secondary-button):hover { background: #e0c78e; border-color: #e0c78e; }
+/* Section numbers are measured markers, distinct from descriptive copy. */
+.section-title > span {
+  font-family: var(--instrument-type);
+  font-weight: 600;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Technical section headings; track names stay in the readable sans-serif. */
+.section-title h2 {
+  font-family: var(--instrument-type);
+  font-weight: 600;
+  letter-spacing: .01em;
+  line-height: 1.15;
+}

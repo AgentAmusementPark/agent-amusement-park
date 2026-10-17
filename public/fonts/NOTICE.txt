@@ -1,0 +1,11 @@
+Chakra Petch SemiBold (600), Latin webfont subset
+Copyright 2018 The Chakra Petch Project Authors.
+Licensed under the SIL Open Font License 1.1; see OFL-Chakra-Petch.txt.
+
+Unmodified webfont from the official Google Fonts service, retrieved 2026-10-17:
+https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkeQI51R5_F.woff2
+Font manifest: https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600&display=swap
+License source: https://github.com/google/fonts/blob/main/ofl/chakrapetch/OFL.txt
+
+This font is distributed under its own OFL license, not the application's AGPL.
+The site serves it locally; visitors do not request it from Google Fonts.

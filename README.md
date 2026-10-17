@@ -130,3 +130,7 @@ The historical GitHub repository slug remains `AgentAmusementPark/agent-amusemen
 ## License
 
 The public program is licensed under `AGPL-3.0-only`; see `LICENSE`. The boundary document is engineering guidance, not legal advice.
+
+### Interface font
+
+Selected display text uses a locally served 600-weight Latin subset of Chakra Petch (about 10 KB), with the existing Arial/Helvetica stack as fallback. The original wordmark and body typography are preserved. The font is separately licensed under the SIL Open Font License 1.1; its license and source notice are in `public/fonts/`.
